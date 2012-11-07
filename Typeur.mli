@@ -6,6 +6,7 @@ val lvalue : Definition.expr -> bool
 
 module SMap : Map.S with type key = string 
 
+
 type mapelt = 
 	| Var of Definition.ttype
 	| Fun of Definition.ttype * (Definition.ttype list) 
@@ -17,6 +18,6 @@ exception Argtype_error of Definition.position * string * (Definition.ttype list
 
 val bien_forme : mapelt SMap.t -> Definition.ttype -> bool
 
-val getType : mapelt SMap.t -> Definition.node -> Definition.ttype
+val getType : mapelt SMap.t -> Definition.node -> unit
 
 
