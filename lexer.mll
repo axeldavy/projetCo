@@ -1,16 +1,17 @@
 {
   (* partie inspirée du code du td3 *)
   open Lexing
+  open Parser
 
   exception Lexing_error of string
 
-  type tokenres = Teof | Const of Int32.t | Name of string | Chaine of string 
+  (* type tokenres = Teof | Const of Int32.t | Name of string | Chaine of string 
 		  | IF | THEN | ELSE | FUNCTION |STRUCT | UNION | INT 
                   | VOID | NULL | FOR | WHILE | RETURN | ARROW
 		  | OVER | OVER_OR_EQUAL | EQUAL_EQUAL | EQUAL 
 		  | UNDER | UNDER_OR_EQUAL | NOT_EQUAL | PARENTHESIS_OPEN 
 		  | PARENTHESIS_CLOSE | INDEX_OPEN | INDEX_CLOSE | DOT 
-		  | STAR | PLUS | MINUS | DIV | I_DOT | SEMICOLON | COLON 
+		  | STAR | PLUS | MINUS | DIV | I_DOT | SEMICOLON | COLON *)
 
   (* tables des mots-clés *)
   let kwd_tbl = 
