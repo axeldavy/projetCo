@@ -9,8 +9,9 @@
 		  | IF | THEN | ELSE | FUNCTION |STRUCT | UNION | INT 
                   | VOID | NULL | FOR | WHILE | RETURN | ARROW
 		  | OVER | OVER_OR_EQUAL | EQUAL_EQUAL | EQUAL 
-		  | UNDER | UNDER_OR_EQUAL | NOT_EQUAL | PARENTHESIS_OPEN 
-		  | PARENTHESIS_CLOSE | INDEX_OPEN | INDEX_CLOSE | DOT 
+		  | UNDER | UNDER_OR_EQUAL | NOT_EQUAL | PARENTHESIS_OPEN | COMMA
+		  | PARENTHESIS_CLOSE | INDEX_OPEN | INDEX_CLOSE | DOT | REM | AND | OR
+                  | PLUS_PLUS | MINUS_MINUS | BIN_NOT | MAY_BE_ADRESS_OR_BIN_AND 
 		  | STAR | PLUS | MINUS | DIV | I_DOT | SEMICOLON | COLON *)
 
   (* tables des mots-clés *)
@@ -75,10 +76,14 @@ rule token = parse
   | "*"  { STAR }
   | "+"  { PLUS }
   | "-"  { MINUS }
-  | "//" { DIV}
+  | "//" { DIV }
+  | "%"  { REM }
   | "?"  { I_DOT}
   | ";"  { SEMICOLON }
   | ":"  { COLON }
+  | ","  { COMMA }
+  | "&&" { AND }
+  | "||" { OR }
   | _ as c  { raise (Lexing_error ("illegal character: " ^ String.make 1 c)) }
 
 and comment1 = parse (* pas de commentaires du même type imbriqués. ici type /* commentaire */ *)
