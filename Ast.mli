@@ -24,11 +24,11 @@ and decl =
 	|Df of decl_fun
 
 and expr = 
-  |Character of char
-  |Entier of Int32.t
+  |Entier of (Int32.t)
   |Chaine of string
   |Variable of ident 
   |Pointer_access of expression 
+  |Access_index of expression * expression 
   |Access_field of expression * ident 
   |Assignement of expression * expression
   |Call of ident * (expression list) 
@@ -43,7 +43,7 @@ and instr =
   |Expression of  expression
   |If of expression * instruction * (instruction option)
   |While of expression * instruction
-  |For of (expression list * (expression option) * instruction)
+  |For of (expression list) * (expression list) * (expression list) * instruction
   |Return of (expression option)
   |Bloc of bloc
   

@@ -6,20 +6,20 @@
   exception Lexing_error of string
 
   (* type tokenres = Teof | Const of Int32.t | Name of string | Chaine of string 
-		  | IF | THEN | ELSE | FUNCTION |STRUCT | UNION | INT 
+		  | IF | THEN | ELSE | FUNCTION |STRUCT | UNION | INT | CHAR
                   | VOID | NULL | FOR | WHILE | RETURN | ARROW
 		  | OVER | OVER_OR_EQUAL | EQUAL_EQUAL | EQUAL 
 		  | UNDER | UNDER_OR_EQUAL | NOT_EQUAL | PARENTHESIS_OPEN | COMMA
 		  | PARENTHESIS_CLOSE | INDEX_OPEN | INDEX_CLOSE | DOT | REM | AND | OR
-                  | PLUS_PLUS | MINUS_MINUS | BIN_NOT | MAY_BE_ADRESS_OR_BIN_AND 
+                  | PLUS_PLUS | MINUS_MINUS | BIN_NOT | GET_ADRESS | SIZEOF
 		  | STAR | PLUS | MINUS | DIV | I_DOT | SEMICOLON | COLON *)
 
   (* tables des mots-clés *)
   let kwd_tbl = 
     ["if", IF; "then", THEN; "else", ELSE;
      "function", FUNCTION; "struct", STRUCT; "union", UNION; "int", INT; 
-     "void",VOID; "NULL",NULL; "for", FOR;
-     "while", WHILE; "return", RETURN;
+     "void",VOID; "NULL",NULL; "char", INT; "for", FOR;
+     "while", WHILE; "return", RETURN; "sizeof", SIZEOF; (* rajouter putchar et sbrk ? *)
     ]
 
   let id_or_kwd = 
@@ -83,6 +83,7 @@ rule token = parse
   | ":"  { COLON }
   | ","  { COMMA }
   | "&&" { AND }
+  | "&"  { GET_ADRESS }
   | "||" { OR }
   | _ as c  { raise (Lexing_error ("illegal character: " ^ String.make 1 c)) }
 
