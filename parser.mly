@@ -95,8 +95,8 @@ expression:
   | e1 = expression INDEX_OPEN e2 = expression INDEX_CLOSE
         {Access_index (e1,e2)}  (* peut être peut-on faire sans Access_index *)
   | e = expression DOT id = ident {Access_field(e,id) }
-  | e = expression ARROW id = ident { Access_field(pointer_access e,id) } (* à vérifier *)
-  | e1 = expression EQUAL e2 = expression {Assignement (e1,e2)} (* vérifier e1 bien valeur gauche lors du typage ?*)
+  | e = expression ARROW id = ident { Access_field(Pointer_access e,id) } (* à vérifier, manque un enregistrement *)
+  | e1 = expression EQUAL e2 = expression {Assignement (e1,e2)} (* vérifier e1 bien valeur gauche lors du typage ? oui*)
   | id = ident PARENTHESIS_OPEN 
                  le = loption( ((expression COMMA)*) ) le' = loption (expression) 
                PARENTHESIS_CLOSE
@@ -134,7 +134,7 @@ expression:
   |GET_ADRESS {Adr_get}
   |NOT {Not}
   |MINUS %prec uminus {UMinus}
-  |PLUS %prec uplus {UPlus}  (* qu'est-ce que doit faire cette opérande? rien? *)
+  |PLUS %prec uplus {UPlus}  (* qu'est-ce que doit faire cette opérande? rien? ouais *)
 
 %inline unop_right =
  |PLUS_PLUS { PPright }
