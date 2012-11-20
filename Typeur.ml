@@ -1,5 +1,6 @@
 open Ast
 open Ast_Type
+open Definition
 
   let not_rec = function 
     | TInt | TChar  | TTypenull -> true
@@ -83,32 +84,27 @@ let rec bien_forme env t = try match t with
 
 let var_decType local env dv =
 (*local est un booléen qui détermine si les variables que l'on déclares sont globales ou locales*) 
-	let t,l = dv.decvar in 
+	let t,id = dv.decvar in 
 	let t' = mtype_of_ttype env t in 
-	let l1 = ref [] in 
-	let add_elt e id = 
-	  let v = if local then TLvar {lv_name = id ; lv_loc = 0 ; lv_type = t'} 
+	let v = if local then TLvar {lv_name = id ; lv_loc = 0 ; lv_type = t'} 
 	  else TGvar {gv_name = id ; gv_type = t'} 
-	  in (*vérification de non redéclaration*)
-		begin try match SMap.find ("var_"^id) env with 
-		  | MVar (TGvar _) when local -> ()
-		  | MVar (TGvar _) -> raise (Type_error (dv.decvar_pos, "trying to redefine variable '"^id^"'"))
-		  | MVar (TLvar _) -> raise (Type_error (dv.decvar_pos, "trying to redefine variable '"^id^"'"))
-		  | _ -> assert false
-		 with Not_found -> () ;
-		end ;
-	  l1 :=(!l1)@[v] ; 
-	  SMap.add ("var_"^id) (MVar v) e
-	in 
-	let env' = List.fold_left add_elt env l
+	 in (*vérification de non redéclaration*)
+	begin try match SMap.find ("var_"^id) env with 
+	  | MVar (TGvar _) when local -> ()
+	  | MVar (TGvar _) -> raise (Type_error (dv.decvar_pos, "trying to redefine variable '"^id^"'"))
+	  | MVar (TLvar _) -> raise (Type_error (dv.decvar_pos, "trying to redefine variable '"^id^"'"))
+	  | _ -> assert false
+	 with Not_found -> () ;
+	end ;
+	let env' = SMap.add ("var_"^id) (MVar v) env
 	in 
 	(*Warnig ERROR : création de 2 copies de la variable Normalement, problème corrigé*)
 	if not (equiv t' TVoid) then 
-	env' , {tdecvar = !l1 ; tdecvar_pos = dv.decvar_pos}
-	else raise (Type_error (dv.decvar_pos, "variable '"^(List.hd l)^"' declared void" ))
+	env' , {tdecvar = v ; tdecvar_pos = dv.decvar_pos}
+	else raise (Type_error (dv.decvar_pos, "variable '"^(id)^"' declared void" ))
 		
 let rec exprType env n =  match n.exp with
-  | Entier 0 -> {texp = TEntier 0 ; texp_pos = n.exp_pos ; texp_type = TTypenull}
+  | Entier i when i =Int32.zero -> {texp = TEntier Int32.zero ; texp_pos = n.exp_pos ; texp_type = TTypenull}
   
   | Entier i -> {texp = TEntier i ; texp_pos = n.exp_pos ; texp_type = TInt}
   
@@ -264,7 +260,7 @@ let rec exprType env n =  match n.exp with
 		let l1' = List.map aux l1
 		and l2' = List.map aux l2 in
 		let e' = match e with 
-		  | None -> {texp = TEntier 1 ; texp_pos = i1.instr_pos ; texp_type = TInt}
+		  | None -> {texp = TEntier Int32.one ; texp_pos = i1.instr_pos ; texp_type = TInt}
 		  | Some e -> exprType env e 
 		in		
 		let i1' = instrType env t0 i1 in 
@@ -290,16 +286,17 @@ let rec fileType env l =
 		let env',dv' = var_decType false env dv in 
 		let env2,l2 = fileType env' (List.tl l) in 
 		env2, (TDvar dv')::l2
-	| Dvar dv -> raise (Type_error (dv.decvar_pos,"storage size of '"^(List.hd (snd dv.decvar))^"' is unknown"))
+	| Dvar dv -> raise (Type_error (dv.decvar_pos,"storage size of '"^(snd dv.decvar)^"' is unknown"))
 	| Dt dt -> begin
 		match dt.dectype with 
 		  | Dstruct (id,lvar) -> 
 			let new_stru = 
-				let l = List.fold_left (fun l' dv ->
+				let l = List.map (fun dv ->
 				  let t = mtype_of_ttype env (fst dv.decvar) in 
-				  if equiv t TVoid then raise (Type_error (dv.decvar_pos, "variable '"^(List.hd (snd dv.decvar))^"' is declared void")) ;
-				  l'@(List.map (fun ident -> ident,t) (snd dv.decvar))
-				) [] lvar in
+				  if equiv t TVoid then raise (Type_error (dv.decvar_pos, "variable '"^(snd dv.decvar)^"' is declared void")) ;
+				  (snd dv.decvar,t)
+				  ) lvar 
+				in
 				{s_name = id ; s_content = l ; s_size = 0}
 			in
 			let env' = (SMap.add ("str_"^id) (MStr new_stru) env)
@@ -312,11 +309,11 @@ let rec fileType env l =
 			env2,(dv'::l2)
 		  | Dunion (id,lvar) -> 
 			let new_uni = 
-				let l = List.fold_left (fun l' dv ->
+				let l = List.map (fun dv ->
 				  let t = mtype_of_ttype env (fst dv.decvar) in 
-				  if equiv t TVoid then raise (Type_error (dv.decvar_pos, "variable '"^(List.hd (snd dv.decvar))^"' is declared void")) ;
-				  l'@(List.map (fun ident -> ident,t) (snd dv.decvar))
-				) [] lvar in
+				  if equiv t TVoid then raise (Type_error (dv.decvar_pos, "variable '"^(snd dv.decvar)^"' is declared void")) ;
+				  (snd dv.decvar,t)
+				) lvar in
 				{u_name = id ; u_content = l ; u_size = 0}
 			in
 			let env' = (SMap.add ("uni_"^id) (MUni new_uni) env)

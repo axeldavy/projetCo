@@ -1,4 +1,4 @@
-open Ast
+open Definition
 
 
 type gvar = {gv_name : ident ; gv_type : mtype}	
@@ -20,11 +20,11 @@ and file = decl list
 and decl_fun = {tfun : func ; tcontent : bloc ; tdecfun_pos : position }
 and decl_typ = {tdectype : dec_t ; tdectype_pos : position}
 and dec_t = TDstruct of stru | TDunion of uni
-and decl_vars = {tdecvar : var list ; tdecvar_pos : position }
+and decl_vars = {tdecvar : var ; tdecvar_pos : position }
 
 and expr = 
   |TCharacter of char
-  |TEntier of int
+  |TEntier of Int32.t
   |TChaine of string
   |TVariable of var
   |TPointer_access of expression 

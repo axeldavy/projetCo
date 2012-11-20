@@ -1,5 +1,6 @@
 open Ast
 open Ast_Type
+open Definition
 
 val equiv : mtype -> mtype -> bool
 
