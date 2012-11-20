@@ -10,7 +10,7 @@ type decl_fun =
 
 and decl_typ = {dectype : dec_t ; dectype_pos : position}
 
-and decl_vars = {decvar : ttype * (ident list) ;
+and decl_vars = {decvar : ttype * ident ;
 		  decvar_pos : position }
 
 and dec_t = Dstruct of ident * decl_vars list 

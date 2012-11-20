@@ -3,6 +3,10 @@
   open Definition
   open Ast
   open Lexing
+  
+  let rec get_type_star (t,ls) =
+   if ls = [] then t
+   else pointer of get_type_star (t, tl (ls))
 
 %}
 
@@ -63,14 +67,28 @@ decl:
 
 *)
 
-var:
-  c = Name { c } (* euhhhh... Problème ici *)
+ident:
+  c = Name { c }   
 
-
+decl_var_interne(t) :
+  ls = loption(STAR)  (* problème : * x va être reconnu comme *x. Est-ce correct en C? -> Il semble que oui*)
+  id = ident
+  { Dvar {decvar = ( get_type_star (t,ls),id); decvar_pos = $startpos}  }
+  
 decl_var:
- t = vtype 
- lvar = loption( ((var COMMA)*) ) @ [var]  (* à vérifier *)
- SEMICOLON
- { Dvar {decvar = ( t,lvar); decvar_pos = $startpos} } (* voir pour la gestion exacte de l'erreur *)
+  t = vtype 
+  lvar = loption( ((decl_var_interne(t) COMMA)*) ) @ [decl_var_interne(t)]  (* à vérifier *)
+  SEMICOLON
+  { Dvar {decvar = ( t,lvar); decvar_pos = $startpos} } 
 
+instruction:
+  |SEMICOLON {Empty} (* il faudra les enlver à un moment *)
+  |e = expression SEMICOLON {Expression e}
+  |IF 
+
+block : 
+  lvar = List.concat (loption (decl_var))
+  linstr = loption(instruction)
+  { { bloc = (lvar,linstr) ; bloc_pos = $startpos}   }
 %%
+
