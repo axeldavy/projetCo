@@ -1,45 +1,54 @@
-open Definition
+open Ast
+open Ast_Type
 
   let not_rec = function 
-    | Int | Char | Typenull -> true
+    | TInt | TChar  | TTypenull -> true
     | _ -> false
 
   let equiv t1 t2 = match t1,t2 with  
     | _,_ when (not_rec t1)&& (not_rec t2) -> true
-    | Typenull, (Pointer _) | (Pointer _), Typenull -> true 
-    | (Pointer Void),(Pointer _) | (Pointer _),(Pointer Void) -> true
+    | TTypenull, (TPointer _) | (TPointer _), TTypenull -> true 
+    | (TPointer TVoid),(TPointer _) | (TPointer _),(TPointer TVoid) -> true
     |  _,_  -> t1 = t2
 
 
   let rec num = function 
-    | Int | Char | Pointer _ | Typenull -> true
+    | TInt | TChar | TPointer _ | TTypenull -> true
     | _ -> false
 
 
   let rec lvalue = function 
-    | Variable _ -> true
-    | Pointer_access _ -> true
-    | Access_field (e,_) -> lvalue e.exp
+    | TVariable _ -> true
+    | TPointer_access _ -> true
+    | TAccess_field (e,_) -> lvalue e.texp
     | _ -> false
 
+	
+let rec mtype_of_ttype env = function 
+	| Int -> TInt 
+	| Char -> TChar
+	| Void -> TVoid
+	| Typenull -> TTypenull
+	| Struct id -> begin match SMap.find ("str_"^id) env with 
+		| MStr s -> TStruct s
+		| _ -> assert false
+		end
+	| Union id -> begin match SMap.find ("uni_"^id) env with 
+		| MUni u -> TUnion u 
+		| _ -> assert false
+		end
+	| Pointer t -> TPointer (mtype_of_ttype env t)	
+	
+let rec ttype_of_mtype = function 
+	| TInt -> Int 
+	| TChar -> Char
+	| TVoid -> Void
+	| TTypenull -> Typenull
+	| TStruct s ->  Struct s.s_name
+	| TUnion u ->  Union u.u_name 
+	| TPointer t -> Pointer (ttype_of_mtype t)	
 
-module SMap = Map.Make(String) 
-
-(*type des éléments de l'environnement, il doit contenir les variables, les fonctions, 
-et les structures et unions de types*)
-type mapelt = 
-	| Var of ttype
-	| Fun of ttype * (ttype list) (*type de retour, plus type des arguments*)
-	| Str of (ttype * string) list
-	| Uni of (ttype * string) list
-(* on conserve dans l'environnement le type de toutes les variables et les fonctions. 
-Le champ arg permet de savoir si l'indent donné correspond à une variable, ou une fonction
-et donne les types des arguments de la fonction*)
-
-exception Type_error of position * string
-exception Argtype_error of position * string * (ttype list)
-(*== erreur à la position pos, la fonction (l'opérateur string) a eu les types de la liste en argument *)
-
+let string_of_mtype t= string_of_type (ttype_of_mtype t)
 	
 (*dit si un opérateur binaire est un opérateur de comparaison ou non*)
 let compop = function 
@@ -47,144 +56,306 @@ let compop = function
 	| BPlus | BMinus | Mul | Div | Mod | Or | And -> false
 	
 let ispointer = function 
-	| Typenull | Pointer _ -> true
-	| Int | Char | Struct _ | Union _ | Void -> false
+	| TTypenull | TPointer _ -> true
+	| TInt | TChar | TStruct _ | TUnion _ | TVoid -> false
 	
 (*pour ne pas avoir de conflit entre une variable et une structure qui auraient le même nom, 
 dans la map de l'environnement, on rajoute les préfixes "var_" "str_" "uni_" "fun_" devant 
 le nom de l'identificateur (on ne peut pas lier plusieurs fois un id dans une map)*)
-let rec bien_forme env = function
-	| Void | Int | Char | Typenull -> true
-	| Pointer t -> bien_forme env t 
-	| Struct s -> begin try 
-		match SMap.find ("str_"^s) env with 
-		| Var _ | Fun _ | Uni _ -> false
-		| Str l -> List.fold_left (fun b -> fun t -> b&&(bien_forme env (fst t))) true l
-		with Not_found -> false
+let rec bien_forme env t = try match t with
+	| TVoid | TInt | TChar | TTypenull -> true
+	| TPointer t -> bien_forme env t 
+	
+	| TStruct s -> begin  
+		match SMap.find ("str_"^s.s_name) env with 
+		| MVar _ | MFun _ | MUni _ -> assert false
+		| MStr s -> List.fold_left (fun b -> fun t -> b&&(bien_forme env (snd t))) true s.s_content 
 		end
-	| Union s -> begin try 
-		match SMap.find ("uni_"^s) env with 
-		| Var _ | Fun _ | Str _ -> false
-		| Uni l -> List.fold_left (fun b -> fun t -> b&&(bien_forme env (fst t))) true l
-		with Not_found -> false
-		end
-
 		
-let rec getType env n =  match n.exp with
-  | Entier 0 -> n.data <- Typenull
-  | Entier _ -> n.data <- Int
-  | Chaine _ -> n.data <- Pointer(Char)
-  | Variable s -> begin try
-	let envt = SMap.find ("var_"^s) env in
-	match envt with
-	| Var t -> n.data <- t
+	| TUnion u -> begin 
+		match SMap.find ("uni_"^u.u_name) env with 
+		| MVar _ | MFun _ | MStr _ -> assert false
+		| MUni u -> List.fold_left (fun b -> fun t -> b&&(bien_forme env (snd t))) true u.u_content
+		end 
+		
+	with Not_found -> false
+
+
+let var_decType local env dv =
+(*local est un booléen qui détermine si les variables que l'on déclares sont globales ou locales*) 
+	let t,l = dv.decvar in 
+	let t' = mtype_of_ttype env t in 
+	let l1 = ref [] in 
+	let add_elt e id = 
+	  let v = if local then TLvar {lv_name = id ; lv_loc = 0 ; lv_type = t'} 
+	  else TGvar {gv_name = id ; gv_type = t'} 
+	  in (*vérification de non redéclaration*)
+		begin try match SMap.find ("var_"^id) env with 
+		  | MVar (TGvar _) when local -> ()
+		  | MVar (TGvar _) -> raise (Type_error (dv.decvar_pos, "trying to redefine variable '"^id^"'"))
+		  | MVar (TLvar _) -> raise (Type_error (dv.decvar_pos, "trying to redefine variable '"^id^"'"))
+		  | _ -> assert false
+		 with Not_found -> () ;
+		end ;
+	  l1 :=(!l1)@[v] ; 
+	  SMap.add ("var_"^id) (MVar v) e
+	in 
+	let env' = List.fold_left add_elt env l
+	in 
+	(*Warnig ERROR : création de 2 copies de la variable Normalement, problème corrigé*)
+	if not (equiv t' TVoid) then 
+	env' , {tdecvar = !l1 ; tdecvar_pos = dv.decvar_pos}
+	else raise (Type_error (dv.decvar_pos, "variable '"^(List.hd l)^"' declared void" ))
+		
+let rec exprType env n =  match n.exp with
+  | Entier 0 -> {texp = TEntier 0 ; texp_pos = n.exp_pos ; texp_type = TTypenull}
+  
+  | Entier i -> {texp = TEntier i ; texp_pos = n.exp_pos ; texp_type = TInt}
+  
+  | Chaine s -> {texp = TChaine s; texp_pos = n.exp_pos ; texp_type = TPointer(TChar)}
+  
+  | Character c -> {texp = TCharacter c; texp_pos = n.exp_pos ; texp_type = TChar}
+  
+  | Variable id -> begin try
+	let v = SMap.find ("var_"^id) env in
+	match v with
+	| MVar (TGvar(x)) -> {texp = TVariable(TGvar(x)) ; texp_pos = n.exp_pos ; texp_type = x.gv_type}
+	| MVar (TLvar(x)) -> {texp = TVariable(TLvar(x)) ; texp_pos = n.exp_pos ; texp_type = x.lv_type}
 	| _ -> assert false
-	with Not_found -> raise (Type_error (n.pos,(s ^ " : undeclared")))
+	with Not_found -> raise (Type_error (n.exp_pos,(id ^ " : undeclared")))
   end
+  
   | Sizeof t -> 
+	let t = mtype_of_ttype env t in
 	if bien_forme env t then
-	  if not (equiv t Void) then n.data <- Int 
-	  else raise (Type_error (n.pos,("trying to get sizeof void")))
-	else raise (Type_error (n.pos,(string_of_type t ^ " est mal formé") ))
+	  if not (equiv t TVoid) 
+	  then {texp = TSizeof t ; texp_pos = n.exp_pos ; texp_type = TInt}
+	  else raise (Type_error (n.exp_pos,("trying to get sizeof void")))
+	else raise (Type_error (n.exp_pos,(string_of_mtype t) ^ " est mal formé") )
 	  
   | Unop (Adr_get, e) -> 
-    getType env e ;
-    if lvalue e.exp 
-    then n.data <- e.data
-    else raise (Type_error (n.pos,"trying to get adress of expression with no left value"))
-      
+    let e' = exprType env e in 
+    if lvalue e'.texp 
+    then {texp = TUnop(Adr_get, e') ; texp_pos = n.exp_pos ; texp_type = TPointer (e'.texp_type) }
+    else raise (Type_error (n.exp_pos,"trying to get adress of expression with no left value"))
+     
   | Pointer_access(e) -> begin
-    getType env e ;
-    match e.data with
-    | Pointer t -> n.data <- t
-    | _ -> raise (Type_error (n.pos,"pointer access of a non pointer expression"))
+    let e' = exprType env e in 
+    match e'.texp_type with
+    | TPointer t -> {texp = TPointer_access(e'); texp_pos = n.exp_pos ; texp_type = t}
+    | _ -> raise (Type_error (n.exp_pos,"pointer access of a non pointer expression"))
   end
     
   | Access_field (e,x) ->
     begin
-      getType env e ;
-      match e.data with
-      | Union s ->
-	let et = SMap.find ("uni_"^s) env in
-	begin
-	  match et with
-	  | Uni l -> begin try
-			     n.data <- fst (List.find (fun (t,y) -> y = x) l);
-	    with Not_found -> raise (Type_error (n.pos,"l'identificateur " ^x^ "n'apparait pas dans " ^ "uni " ^ s ))
-	  end
-	  | _ -> assert false
-	end
-      | Struct s -> begin
-	let et = SMap.find ("str_"^s) env in
-	match et with
-	| Str l -> begin try
-			   n.data <- fst (List.find (fun (t,y) -> y = x) l) ;
-	  with Not_found -> raise (Type_error (n.pos,"l'identificateur " ^x^ "n'apparait pas dans " ^ "str " ^ s ))
-	end
-	| _ -> assert false
+      let e' = exprType env e in 
+      match e'.texp_type with
+      | TUnion u ->
+		if SMap.mem ("uni_"^u.u_name) env then 
+		  try
+	      { texp = TAccess_field(e',x); texp_pos = n.exp_pos ; texp_type = snd (List.find (fun (y,t) -> y = x) u.u_content)};
+		  with Not_found -> raise (Type_error (n.exp_pos,"l'identificateur " ^x^ "n'apparait pas dans " ^ "uni " ^ u.u_name ))
+		else
+		  raise (Type_error (n.exp_pos,"undefined type : union '" ^u.u_name^"'" ))
+      | TStruct s -> begin
+		if SMap.mem ("str_"^s.s_name) env then 
+		  try
+		  { texp = TAccess_field(e',x); texp_pos = n.exp_pos ; texp_type = snd (List.find (fun (y,t) -> y = x) s.s_content)};
+		  with Not_found -> raise (Type_error (n.exp_pos,"l'identificateur " ^x^ "n'apparait pas dans " ^ "str " ^ s.s_name ))
+		else 
+		  raise (Type_error (n.exp_pos,"undefined type : structure '" ^s.s_name^"'" ))
       end
-      | _ -> raise (Type_error (n.pos,("request for member '" ^x^ "' in something not a structure or union")))
+      | _ -> raise (Type_error (n.exp_pos,("request for member '" ^x^ "' in something not a structure or union")))
     end
-      
+     
   | Assignement (e1,e2) ->
-    if lvalue e1.exp then
-      begin getType env e1 ; getType env e2 ;
-	let t1 = e1.data and t2 = e2.data in
-	if equiv t1 t2 then n.data <- t1
+	let e1' = exprType env e1 and e2' = exprType env e2 in 
+    if lvalue e1'.texp then
+      let t1 = e1'.texp_type and t2 = e2'.texp_type in
+	if equiv t1 t2 then {texp = TAssignement (e1',e2'); texp_pos =n.exp_pos ; texp_type = t1}
 	else
-	  raise (Type_error (n.pos,"incompatible types when assigning to type " ^ (string_of_type t1) ^" from type " ^ (string_of_type t2)))
-      end
-    else raise (Type_error (n.pos,"lvalue required as left operand of assignment" ))
-      
+	  raise (Type_error (n.exp_pos,"incompatible types when assigning to type " ^ (string_of_mtype t1) ^" from type " ^ (string_of_mtype t2)))
+    else raise (Type_error (n.exp_pos,"lvalue required as left operand of assignment" ))
       
   | Unop(op,e) when (op= PPleft)||(op =PPright)||(op = MMleft)||(op = MMright) ->
-    if lvalue e.exp then
-      begin
-	getType env e ;
-	let t = e.data in
-	if num t then n.data <- t
-	else raise (Argtype_error (n.pos,(string_of_unop op),[t]))
-      end
-    else raise (Type_error (n.pos,"lvalue required as left operand of assignment" ))
-      
+    let e' = exprType env e in 
+	if lvalue e'.texp then
+	  let t = e'.texp_type in
+	  if num t then {texp = TUnop(op, e'); texp_pos = n.exp_pos ; texp_type = t}
+		else raise (Argtype_error (n.exp_pos,(string_of_unop op),[t]))
+      else raise (Type_error (n.exp_pos,"lvalue required as left operand of assignment" ))
+     
   | Unop(op,e) when (op = UPlus)||(op = UMinus) -> 
-    getType env e ;
-    let t = e.data in
-    if equiv t Int
-    then n.data <- Int
-    else raise (Argtype_error (n.pos,(string_of_unop op),[t])) 
-      
-  | Unop(Not,e) -> getType env e ; let t = e.data in if num t then n.data <- Int else raise (Argtype_error (n.pos,(string_of_unop Not),[t]))
+    let e' = exprType env e in
+    let t = e'.texp_type in
+    if equiv t TInt
+    then {texp = TUnop(op,e') ; texp_pos = n.exp_pos ; texp_type = TInt}
+    else raise (Argtype_error (n.exp_pos,(string_of_unop op),[t])) 
+     
+  | Unop(Not,e) -> let e' = exprType env e in 
+		let t = e'.texp_type in 
+		if num t then {texp = TUnop (Not,e') ; texp_pos = n.exp_pos ; texp_type = TInt} 
+		else raise (Argtype_error (n.exp_pos,(string_of_unop Not),[t]))
+		
   | Unop (_,_) -> assert false (*tous les autres cas ont été traités avant, c'est pour éviter un warning*)
     
-  | Binop(op,e1,e2) when compop op -> getType env e1 ; getType env e2 ; 
-    let t1 = e1.data and t2 = e2.data in
-    if (equiv t1 t2)&&(num t1) then n.data <- Int
-    else raise (Argtype_error (n.pos,(string_of_binop op),[t1;t2]))
-      
-  | Binop(op,e1,e2) -> getType env e1 ; getType env e2 ;
-    let t1 = e1.data and t2 = e2.data in
-    if (equiv t1 t2)&&(num t1) then n.data <-Int
-else
-      if (ispointer t1)&&(equiv t2 Int)&&((op = BPlus)||(op = BMinus))
-      then n.data <- t1
-      else
-	if (ispointer t2)&&(equiv t1 Int)&&(op = BPlus)
-	then n.data <- t2
-	else
-	  if (ispointer t1)&&(equiv t1 t2)&&(op = BMinus)
-	  then n.data <- Int
-	  else raise (Argtype_error (n.pos,(string_of_binop op),[t1;t2])) (*risque d'erreur important*)
-	    
-  | Call(f,l) -> begin try
-			 match SMap.find ("fun_"^f) env with
-| Fun (t,lt) -> List.iter (getType env) l ;
-  let lt'= List.map (fun e -> e.data) l in
-  let b = List.fold_left2 (fun b -> fun t1 -> fun t2 -> b&&(equiv t1 t2)) true lt lt' in
-  if b then n.data <- t else raise (Argtype_error (n.pos,("function '" ^f^"'"),lt'))
-| _ -> assert false
-  
-    with Not_found -> raise (Type_error (n.pos,"unbound function '"^f^"'"))
-    | Invalid_argument _ -> raise (Type_error (n.pos, "wrong number of argument for function '"^f^"'"))
-  end
+  | Binop(op,e1,e2) when compop op -> let e1' = exprType env e1 and e2'= exprType env e2 in 
+    let t1 = e1'.texp_type and t2 = e2'.texp_type in
+    if (equiv t1 t2)&&(num t1) 
+	  then {texp = TBinop(op,e1',e2') ; texp_pos = n.exp_pos ; texp_type = TInt}
+      else raise (Argtype_error (n.exp_pos,(string_of_binop op),[t1;t2]))
     
+  | Binop(op,e1,e2) -> let e1' = exprType env e1 and e2' = exprType env e2 in
+    let t1 = e1'.texp_type and t2 = e2'.texp_type in
+	let t =
+    if (equiv t1 t2)&&(num t1) 
+	  then TInt
+	  else
+      if (ispointer t1)&&(equiv t2 TInt)&&((op = BPlus)||(op = BMinus))
+        then t1
+        else
+		if (ispointer t2)&&(equiv t1 TInt)&&(op = BPlus)
+		  then t2
+		  else
+		  if (ispointer t1)&&(equiv t1 t2)&&(op = BMinus)
+			then TInt
+			else raise (Argtype_error (n.exp_pos,(string_of_binop op),[t1;t2])) (*risque d'erreur important*)
+	in 
+	{texp = TBinop(op,e1',e2') ; texp_pos = n.exp_pos; texp_type = t}
+	
+  | Call(id,l) -> begin try
+	match SMap.find ("fun_"^id) env with
+	| MFun f -> let l = List.map (exprType env) l in
+	let lt'= List.map (fun e -> e.texp_type) l in
+	let b = List.fold_left2 (fun b (t1,_) t2 -> b&&(equiv t1 t2)) true f.f_arg lt' in
+	if b then {texp = TCall(f,l); texp_pos = n.exp_pos ; texp_type = f.f_type }
+	  else raise (Argtype_error (n.exp_pos,("function '" ^f.f_name^"'"),lt'))
+	| _ -> assert false
+  
+    with Not_found -> raise (Type_error (n.exp_pos,"unbound function '"^id^"'"))
+		| Invalid_argument _ -> raise (Type_error (n.exp_pos, "wrong number of argument for function '"^id^"'"))
+  end
+  
+ let rec instrType env t0 i = match i.instr with 
+	| Empty -> {tinstr = TEmpty ; tinstr_pos = i.instr_pos}
+	| Expression e -> {tinstr = TExpression (exprType env e) ; tinstr_pos = i.instr_pos}
+	| Return None -> if t0 = TVoid then {tinstr = TReturn None ; tinstr_pos = i.instr_pos}
+		else raise (Returntype_error (i.instr_pos,t0,TVoid))
+	| Return (Some e) -> let e' = exprType env e in 
+		if equiv t0 e'.texp_type 
+			then {tinstr = TReturn (Some e') ; tinstr_pos = i.instr_pos}
+			else raise (Returntype_error (i.instr_pos,t0,e'.texp_type))
+	| If(e,i1,i2) -> let e' = exprType env e in 
+		if num e'.texp_type then 
+		  let i1' = instrType env t0 i1 in 
+		  let i2' = match i2 with 
+			| None -> None
+			| Some i -> Some (instrType env t0 i)
+		  in 
+		  {tinstr = TIf(e',i1',i2'); tinstr_pos = i.instr_pos}
+		else raise (Type_error (i.instr_pos, "used type " ^(string_of_mtype e'.texp_type)^" value where scalar is required"))
+	| While(e,i1) -> let e' = exprType env e 
+		and i1' = instrType env t0 i1 in 
+		if num e'.texp_type then 
+		  {tinstr = TWhile(e',i1') ; tinstr_pos = i.instr_pos}
+		 else raise (Type_error (i.instr_pos, "used type " ^(string_of_mtype e'.texp_type)^" value where scalar is required"))
+	| For(l1,e,l2,i1) -> 
+		let aux e = {tinstr = TExpression (exprType env e) ; tinstr_pos = e.exp_pos} in
+		let l1' = List.map aux l1
+		and l2' = List.map aux l2 in
+		let e' = match e with 
+		  | None -> {texp = TEntier 1 ; texp_pos = i1.instr_pos ; texp_type = TInt}
+		  | Some e -> exprType env e 
+		in		
+		let i1' = instrType env t0 i1 in 
+		if num e'.texp_type then 
+			let ti = {tinstr = TBloc {tbloc = [],(l2'@[i1']) ; tbloc_pos = i1'.tinstr_pos}; tinstr_pos =i1'.tinstr_pos} in
+			let ti = {tinstr= TWhile (e',ti) ; tinstr_pos = i1'.tinstr_pos } in 
+			let ti = {tinstr = TBloc {tbloc = [], l1'@[ti] ; tbloc_pos = i.instr_pos} ; tinstr_pos = i.instr_pos} in
+			ti
+			(*on remplace l'instruction for, par une autre équivalente avec while, vérifier que c'est bien à ça que 
+			ça correspond*)
+		else raise (Type_error (i.instr_pos, "used type " ^(string_of_mtype e'.texp_type)^" value where scalar is required"))
+	| Bloc b -> let l1,l2 = b.bloc in 
+		let aux = fun (e,l) dv -> let e',dv' = var_decType true e dv in e', (dv'::l) in 
+		let env',l1' = List.fold_left aux (env,[]) l1 in 
+		let l2' = List.map (instrType env' t0) l2 in 
+		{tinstr = TBloc{tbloc = l1',l2' ; tbloc_pos = b.bloc_pos} ; tinstr_pos = i.instr_pos}
+		
+let rec fileType env l = 
+  if l = [] then env,[] 
+  else 
+  match List.hd l with 
+	| Dvar dv when bien_forme env (mtype_of_ttype env (fst (dv.decvar))) -> 
+		let env',dv' = var_decType false env dv in 
+		let env2,l2 = fileType env' (List.tl l) in 
+		env2, (TDvar dv')::l2
+	| Dvar dv -> raise (Type_error (dv.decvar_pos,"storage size of '"^(List.hd (snd dv.decvar))^"' is unknown"))
+	| Dt dt -> begin
+		match dt.dectype with 
+		  | Dstruct (id,lvar) -> 
+			let new_stru = 
+				let l = List.fold_left (fun l' dv ->
+				  let t = mtype_of_ttype env (fst dv.decvar) in 
+				  if equiv t TVoid then raise (Type_error (dv.decvar_pos, "variable '"^(List.hd (snd dv.decvar))^"' is declared void")) ;
+				  l'@(List.map (fun ident -> ident,t) (snd dv.decvar))
+				) [] lvar in
+				{s_name = id ; s_content = l ; s_size = 0}
+			in
+			let env' = (SMap.add ("str_"^id) (MStr new_stru) env)
+			and dv' = (TDt {tdectype = TDstruct new_stru ; tdectype_pos = dt.dectype_pos}) in
+		    List.iter (fun (id,t) -> if (not (bien_forme env' t)) || (equiv t (TStruct new_stru)) then
+				raise (Type_error (dt.dectype_pos,"storage size of '"^(id)^"' is unknown")) )
+				new_stru.s_content
+			;
+			let env2,l2 = fileType env' (List.tl l) in 
+			env2,(dv'::l2)
+		  | Dunion (id,lvar) -> 
+			let new_uni = 
+				let l = List.fold_left (fun l' dv ->
+				  let t = mtype_of_ttype env (fst dv.decvar) in 
+				  if equiv t TVoid then raise (Type_error (dv.decvar_pos, "variable '"^(List.hd (snd dv.decvar))^"' is declared void")) ;
+				  l'@(List.map (fun ident -> ident,t) (snd dv.decvar))
+				) [] lvar in
+				{u_name = id ; u_content = l ; u_size = 0}
+			in
+			let env' = (SMap.add ("uni_"^id) (MUni new_uni) env)
+			and dv' = (TDt {tdectype = TDunion new_uni ; tdectype_pos = dt.dectype_pos}) in
+		    List.iter (fun (id,t) -> if (not (bien_forme env' t)) || (equiv t (TUnion new_uni)) then
+				raise (Type_error (dt.dectype_pos,"storage size of '"^(id)^"' is unknown")) )
+				new_uni.u_content
+			;
+			let env2,l2 = fileType env' (List.tl l) in 
+			env2,(dv'::l2)
+		end 
+	| Df df -> let t,id,lvar,b = df.decfun in 
+		let t' = mtype_of_ttype env t in 
+		if (SMap.mem ("fun_"^id) env) || (SMap.mem ("var_"^id) env) 
+		  then raise (Type_error (df.decfun_pos, "trying to redefine function '"^id^"'")) ; 
+		List.iter (fun (t,x) -> if not (bien_forme env (mtype_of_ttype env t)) 
+			then raise (Type_error 
+				(df.decfun_pos,"type of varaible '"^x^"' not well formed")
+				)
+			) lvar ; 
+		let _ = List.fold_left (fun lvar (_,x) -> 
+			if List.mem x lvar 
+			then raise (Type_error (df.decfun_pos, "argument '"^x^"' is defined twice"))
+			else x::lvar) [] lvar 
+		in
+		let new_fun = 
+			{f_name = id; 
+			f_type = t' ; 
+			f_arg = List.map (fun (t,x) -> (mtype_of_ttype env t,x)) lvar}
+		in
+		let env' = SMap.add ("fun_"^id) (MFun new_fun) env in
+		let env_f = List.fold_left (fun e (t,x) -> SMap.add "var_" 
+		(MVar (TLvar {lv_name = id ; lv_loc = 0 ; lv_type = mtype_of_ttype env t})) e) 
+		 env' lvar in
+		let new_b = match (instrType env_f t' {instr = Bloc b ; instr_pos = b.bloc_pos}).tinstr with 
+			| TBloc b -> b
+			| _ -> assert false
+		in 
+		let dv' = TDf {tfun = new_fun ; tcontent = new_b ; tdecfun_pos = df.decfun_pos}
+		in
+		let env2,l2 = fileType env' (List.tl l) in 
+		env2,(dv'::l2)

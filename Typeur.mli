@@ -1,23 +1,21 @@
-val equiv : Definition.ttype -> Definition.ttype -> bool
+open Ast
+open Ast_Type
 
-val num : Definition.ttype -> bool
+val equiv : mtype -> mtype -> bool
 
-val lvalue : Definition.expr -> bool
+val num : mtype -> bool
 
-module SMap : Map.S with type key = string 
+val lvalue : Ast_Type.expr -> bool
+
+val mtype_of_ttype : mapelt SMap.t -> ttype -> mtype
 
 
-type mapelt = 
-	| Var of Definition.ttype
-	| Fun of Definition.ttype * (Definition.ttype list) 
-	| Str of (Definition.ttype * string) list
-	| Uni of (Definition.ttype * string) list
+val bien_forme : mapelt SMap.t -> mtype -> bool
 
-exception Type_error of Definition.position * string
-exception Argtype_error of Definition.position * string * (Definition.ttype list)
+val exprType : mapelt SMap.t -> Ast.expression -> Ast_Type.expression
 
-val bien_forme : mapelt SMap.t -> Definition.ttype -> bool
+val instrType : mapelt SMap.t -> mtype -> Ast.instruction -> Ast_Type.instruction 
 
-val getType : mapelt SMap.t -> Definition.node -> unit
+val fileType : mapelt SMap.t -> Ast.decl list -> mapelt SMap.t * Ast_Type.decl list
 
 
