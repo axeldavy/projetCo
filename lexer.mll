@@ -2,7 +2,7 @@
   (* partie inspirée du code du td3 *)
   open Lexing
   open Parser
-
+  
   exception Lexing_error of string
 
   (* type tokenres = Teof | Const of Int32.t | Name of string | Chaine of string 
@@ -12,8 +12,8 @@
 		  | UNDER | UNDER_OR_EQUAL | NOT_EQUAL | PARENTHESIS_OPEN | COMMA
 		  | PARENTHESIS_CLOSE | INDEX_OPEN | INDEX_CLOSE | DOT | REM | AND | OR
                   | PLUS_PLUS | MINUS_MINUS | BIN_NOT | GET_ADRESS | SIZEOF
-		  | STAR | PLUS | MINUS | DIV | I_DOT | SEMICOLON | COLON *)
-
+		  | STAR | PLUS | MINUS | DIV | I_DOT | SEMICOLON | COLON 
+*)
   (* tables des mots-clés *)
   let kwd_tbl = 
     ["if", IF; "then", THEN; "else", ELSE;
@@ -39,12 +39,10 @@ let chiffre_octal = ['0'-'7']
 let chiffre_hexa = ['0'-'9' 'a'-'f' 'A'-'F' ]
 let alpha = ['a'-'z' 'A'-'Z']
 let ident = (alpha|'_') (alpha | chiffre |'_')*
-let caractere =   ([' '-'~']  [^'\\' '\'' '\"'])  | "\\\\" |"\\\'"|"\\\""  
+let caractere =   [ ' ' '!' '#' - '[' ']'-'_'  'a'-'~' ]  | "\\\\" |"\\\'"|"\\\""  
                                      | ("\\x" chiffre_hexa chiffre_hexa)  
                (* je vais jusqu'à 126, pas 127 qui correspond à DEL *)
-
-
-
+			   
 
 rule token = parse
   | ident as s {id_or_kwd s}
@@ -53,13 +51,14 @@ rule token = parse
   | eof {Teof}
   |"0"  {Const Int32.zero} (* on autorise 0000 par le chemin octal*)
   |['1'-'9'] chiffre* as s {Const (Int32.of_string (s)) } (* il faudra vérifier si pas trop grand et faire int32 *)
-  |"0"(chiffre_octal+ as s) {Const (Int32.of_string( String.concat "0o" [s])) }
+  |"0"(chiffre_octal+ as s) {Const (Int32.of_string( "0o" ^ s)) }
   |("0x"|"0X") (chiffre_hexa+ as s) 
-                  {Const (Int32.of_string( String.concat "0x" [s])) } (* doit on supporter 0X ? *)
-  | "\"" { let p = lire_chaine [] lexbuf in Chaine (String.concat "" p) }
+                  {Const (Int32.of_string("0x" ^ s)) } (* doit on supporter 0X ? *)
+  | "'" (caractere as c) "'" {Const (Int32.of_int (int_of_char (char_of_character (Lexing.from_string c))))}
+  | "\"" { Chaine (lire_chaine lexbuf) }
   | "/*" { comment1 lexbuf; token lexbuf }
   | "*/" { raise (Lexing_error ("no opened comment")) }
-  | "//" { comment2 lexbuf; token lexbuf }
+  | "//" { comment2 lexbuf }
   | "->" { ARROW }
   | ">"  { OVER }
   | ">=" { OVER_OR_EQUAL }
@@ -94,18 +93,25 @@ and comment1 = parse (* pas de commentaires du même type imbriqués. ici type /* 
   | _  {comment1 lexbuf}
 
 and comment2 = parse
-  | "\n" {newline lexbuf}
-  | eof {} (* problème ici: token ne va peut-être pas renvoyer TEOF *)
+  | "\n" {newline lexbuf ; token lexbuf}
+  | eof {Teof} (* problème ici: token ne va peut-être pas renvoyer TEOF *)
   | _ { comment2 lexbuf }
 
-and lire_chaine p = parse
-  | "\"" {p}
+and lire_chaine = parse
+  | "\"" {""}
   | eof  {raise(Lexing_error "unfinished String" )}
-  | "\\" {raise(Lexing_error "string functionnality not implemented")}
   | "\n" {raise(Lexing_error "end of line before finishing string")}
-  | _ as c {lire_chaine ((String.make 1 c)::p) lexbuf}
+  | caractere as c {(String.make 1 (char_of_character (Lexing.from_string c))) ^(lire_chaine lexbuf)}
 
-
+  (*c'est une rule qui ne sera pas appelee sur lexbuf, mais sur une chaine 
+  représentant un caractère pour le transformer en caractère caml correspondant*)
+ and char_of_character = parse
+	| [ ' ' '!' '#' - '[' ']'-'_'  'a'-'~' ] as c {c}
+	| "\\\\" {'\\'}
+	| "\\\'" {'\''}
+	| "\\\""  {'\"'}
+	| "\\x" ((chiffre_hexa chiffre_hexa) as c) {char_of_int (int_of_string ("0x"^c))}
+	| _ {assert false}
 {
 
 }
