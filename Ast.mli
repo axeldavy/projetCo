@@ -56,7 +56,5 @@ and instruction = {instr : instr ; instr_pos : position}
 and bloc = {bloc : (decl_vars list) * (instruction list) ;
 	    bloc_pos : position}
 
-and cfunction = {name : string ;  body : bloc ; args : decl_vars list; rtype : ttype } 
-(* à adapter *)
 
 and program = {decl : decl list }

@@ -4,7 +4,7 @@ BIN=test
 FLAGS=
 
 all: $(BIN)
-	exit (1)
+	exit 0
 
 $(BIN):$(CMO)
 	ocamlc $(FLAGS) -o $(BIN) $(CMO)

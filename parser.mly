@@ -6,19 +6,19 @@
   
   let rec get_type_star (t,ls) =
    if ls = [] then t
-   else pointer of get_type_star (t, tl (ls))
+   else Pointer (get_type_star (t, List.tl (ls)))
 
 %}
 
-%token <Int32.t> Const
-%token <string> Name
-%token <string> Chaine
-%token DOT I_DOT IF THEN ELSE FUNCTION STRUCT UNION Teof 
+%token <Int32.t> CONST
+%token <string> NAME
+%token <string> CHAINE
+%token DOT (*I_DOT*) IF (*THEN*) ELSE (*FUNCTION*) STRUCT UNION Teof 
 %token PARENTHESIS_OPEN PARENTHESIS_CLOSE INDEX_OPEN INDEX_CLOSE
 %token OPEN_BLOCK CLOSE_BLOCK 
 %token GET_ADRESS COMMA
-%token CHAR INT VOID NULL ARROW RETURN COLON SEMICOLON WHILE FOR SIZEOF
-%token PLUS MINUS STAR DIV REM AND OR PLUS_PLUS MINUS_MINUS BIN_NOT 
+%token CHAR INT VOID (*NULL*) ARROW RETURN SEMICOLON WHILE FOR SIZEOF
+%token PLUS MINUS STAR DIV REM AND OR PLUS_PLUS MINUS_MINUS NOT 
 %token OVER OVER_OR_EQUAL EQUAL_EQUAL EQUAL UNDER UNDER_OR_EQUAL NOT_EQUAL
 
 
@@ -29,8 +29,9 @@
 %left UNDER UNDER_OR_EQUAL OVER OVER_OR_EQUAL
 %left MINUS PLUS
 %left STAR DIV REM
-%right BIN_NOT PLUS_PLUS MINUS_MINUS GET_ADRESS get_pointer uplus uminus
-%left parenthesis index ARROW DOT
+%right NOT PLUS_PLUS MINUS_MINUS GET_ADRESS get_pointer uplus uminus
+%left PARENTHESIS_OPEN PARENTHESIS_CLOSE INDEX_OPEN INDEX_CLOSE ARROW DOT
+(*vérif à faire sur la dernière ligne, les parenthèses, et index*)
 
 /* Point d'entrée de la grammaire */
 %start prog
@@ -49,30 +50,33 @@ vtype:
   |UNION id = ident {Union id}
 
 ident:
-  c = Name { c }   
+  c = NAME { c }   
 
-decl_var_interne(t):
+aux_decl_var:
   ls = list(STAR) 
   id = ident
-  {  {decvar = ( get_type_star (t,ls),id); decvar_pos = ($startpos,$endpos)}  }
+  { ls,id,($startpos,$endpos)  }
   
 decl_var:
   t = vtype;  (* ne prend pas les STAR *)
-  lvar = separated_nonempty_list( COMMA , decl_var_interne(t)) 
+  lvar = separated_nonempty_list( COMMA , aux_decl_var) 
   SEMICOLON
-  { lvar } 
+  { List.map (fun (ls,id,pos) -> 
+    {decvar = get_type_star (t,ls),id ; decvar_pos = pos} ) lvar } 
 
-
-expression:
-  | c = Const {Entier c}
-  | ch=Chaine {Chaine ch}
-  | id = Name {Variable id}
-  | STAR e = expression {Pointer_access e}  
+expression :
+  e = expr {{exp = e; exp_pos = ($startpos,$endpos)}} 
+expr:
+  | c = CONST {Entier c}
+  | ch=CHAINE {Chaine ch}
+  | id = NAME {Variable id}
+  | STAR e  = expression  %prec get_pointer {Pointer_access e}  
   | e1 = expression INDEX_OPEN e2 = expression INDEX_CLOSE
-        {Pointer_access( Binop(PLUS, e1, e2))}
+      {Pointer_access({exp= Binop(BPlus, e1, e2); exp_pos= ($startpos,$endpos)})}
   | e = expression DOT id = ident {Access_field(e,id) }
-  | e = expression ARROW id = ident { Access_field(Pointer_access e,id) } (* à vérifier, manque un enregistrement -> je vois pas lequel *)
-  | e1 = expression EQUAL e2 = expression {Assignement (e1,e2)} (* vérifier e1 bien valeur gauche lors du typage ? oui*)
+  | e = expression ARROW id = ident 
+      { Access_field({exp=Pointer_access(e);exp_pos = ($startpos,$endpos)},id) }
+  | e1 = expression EQUAL e2 = expression {Assignement (e1,e2)} 
   | id = ident PARENTHESIS_OPEN 
                  le = separated_list(COMMA, expression)  
                PARENTHESIS_CLOSE
@@ -81,9 +85,9 @@ expression:
   | e = expression u = unop_right {Unop(u,e) }
   | e1 = expression o = op e2 = expression {Binop(o,e1,e2)}
   | e1 = expression c = cmp e2 = expression {Binop(c,e1,e2)}
-  | SIZEOF PARENTHESIS_OPEN t = vtype ls = loption (STAR) PARENTHESIS_CLOSE
+  | SIZEOF PARENTHESIS_OPEN t = vtype ls = list (STAR) PARENTHESIS_CLOSE
         {Sizeof (get_type_star(t,ls) ) }  
-  | PARENTHESIS_OPEN e = expression PARENTHESIS_CLOSE { e }
+  | PARENTHESIS_OPEN e = expression PARENTHESIS_CLOSE { e.exp }
 
 
 
@@ -109,8 +113,8 @@ expression:
   |MINUS_MINUS { MMleft }
   |GET_ADRESS {Adr_get}
   |NOT {Not}
-  |MINUS %prec uminus {UMinus}
-  |PLUS %prec uplus {UPlus}  (* qu'est-ce que doit faire cette opérande? rien? ouais *)
+  |MINUS {UMinus}
+  |PLUS {UPlus} (*on ne peut pas mettre de %prec dans un %inline, voir à mofifier le truc si ça pose problème de pas le mettre*) 
 
 %inline unop_right:
  |PLUS_PLUS { PPright }
@@ -118,13 +122,13 @@ expression:
 
 
 instr:
-  |SEMICOLON {Empty} (* il faudra les enlever à un moment *)
+  |SEMICOLON {Empty} 
   |e = expression SEMICOLON {Expression e}
   |IF PARENTHESIS_OPEN e = expression PARENTHESIS_CLOSE i = instruction
                                       { If(e,i,None)  }
   |IF PARENTHESIS_OPEN e = expression PARENTHESIS_CLOSE i1 = instruction 
                 ELSE  i2 = instruction { If(e,i1,Some i2)}
-  |While PARENTHESIS_OPEN e = expression PARENTHESIS_CLOSE i = instruction
+  |WHILE PARENTHESIS_OPEN e = expression PARENTHESIS_CLOSE i = instruction
                                       { While (e,i) }
   |FOR PARENTHESIS_OPEN le1 = separated_list(COMMA, expression) 
               SEMICOLON le2 = option(expression)
@@ -142,22 +146,25 @@ i = instr { {instr = i; instr_pos = ($startpos,$endpos)} }
 
 block : 
 OPEN_BLOCK
-  lvar = loption (decl_var)
+  lvar = list (decl_var)
   linstr = list(instruction)
 CLOSE_BLOCK
-  { { bloc = (lvar,linstr) ; bloc_pos = ($startpos,$endpos)}   }
+  { let lvar = List.flatten lvar in 
+  { bloc = (lvar,linstr) ; bloc_pos = ($startpos,$endpos) }  }
 
 decl_typ:
-  |STRUCT id = ident OPEN_BLOCK lvar =loption(loption(decl_var)) CLOSE_BLOCK  (* à tester *)
-                   { {Dstruct(id,lvar)} } 
-  |UNION id = ident OPEN_BLOCK lvar =loption(loption(decl_var)) CLOSE_BLOCK  (* à tester *)
-                   { {Dunion(id,lvar)} } 
+  |STRUCT id = ident OPEN_BLOCK lvar =list(decl_var) CLOSE_BLOCK  (* à tester *)
+             {let lvar = List.flatten lvar in
+	      {dectype =Dstruct(id,lvar); dectype_pos = ($startpos,$endpos)} } 
+  |UNION id = ident OPEN_BLOCK lvar =list(decl_var) CLOSE_BLOCK  (* à tester *)
+             {let lvar = List.flatten lvar in 
+	     {dectype = Dunion(id,lvar); dectype_pos = ($startpos,$endpos)} } 
 
 argument:
   t = vtype
-  ls = list(STAR) 
+  ls = list(STAR) (*selon le poly, les arguments ne peuvent pas être des pointeurs*)
   id = ident
-  {  {decvar = ( get_type_star (t,ls),id); decvar_pos = ($startpos,$endpos)}  }
+  {  get_type_star (t,ls) ,id  }
   
 
 decl_fct:
@@ -168,15 +175,16 @@ decl_fct:
   larg = separated_list(COMMA, argument)
   PARENTHESIS_CLOSE
   b = block
-  { { name = id; body = b; args = larg ; rtype = get_type_star(t,ls) } }
+  { { decfun = (get_type_star(t,ls)), id, larg, b ;
+   decfun_pos = ($startpos,$endpos) }}
 
 decl:
-  | d = decl_var {Dvar d}
-  | d = decl_typ {Dt d}
-  | d = decl_fct {Df d}
+  | d = decl_var {List.map (fun dv -> Dvar dv) d}
+  | d = decl_typ {[Dt d]}
+  | d = decl_fct {[Df d]}
 
 prog:
-ld = decl list Teof {decl = ld}
+ld = list(decl) Teof {{decl = List.flatten ld}}
 
 
 %%

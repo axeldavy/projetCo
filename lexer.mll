@@ -5,7 +5,7 @@
   
   exception Lexing_error of string
 
-  (* type tokenres = Teof | Const of Int32.t | Name of string | Chaine of string 
+  (* type tokenres = Teof | CONST of Int32.t | NAME of string | CHAINE of string 
 		  | IF | THEN | ELSE | FUNCTION |STRUCT | UNION | INT | CHAR
                   | VOID | NULL | FOR | WHILE | RETURN | ARROW
 		  | OVER | OVER_OR_EQUAL | EQUAL_EQUAL | EQUAL 
@@ -17,9 +17,9 @@
 *)
   (* tables des mots-clés *)
   let kwd_tbl = 
-    ["if", IF; "then", THEN; "else", ELSE;
-     "function", FUNCTION; "struct", STRUCT; "union", UNION; "int", INT; 
-     "void",VOID; "NULL",NULL; "char", INT; "for", FOR;
+    ["if", IF; (*"then", THEN;*) "else", ELSE;
+     (*"function", FUNCTION;*) "struct", STRUCT; "union", UNION; "int", INT; 
+     "void",VOID; (*"NULL",NULL;*) "char", INT; "for", FOR;
      "while", WHILE; "return", RETURN; "sizeof", SIZEOF; (* rajouter putchar et sbrk ? *)
     ]
 
@@ -27,7 +27,7 @@
     let h = Hashtbl.create 17 in
     List.iter (fun (s,t) -> Hashtbl.add h s t) kwd_tbl;
     fun s -> 
-      try List.assoc s kwd_tbl with _ -> Name s
+      try List.assoc s kwd_tbl with _ -> NAME s
 
   let newline lexbuf =
     let pos = lexbuf.lex_curr_p in
@@ -50,13 +50,13 @@ rule token = parse
   | ' ' | '\t' | '\r' { token lexbuf}
   | '\n' { newline lexbuf; token lexbuf } (* end of line *)
   | eof {Teof}
-  |"0"  {Const Int32.zero} (* on autorise 0000 par le chemin octal*)
-  |['1'-'9'] chiffre* as s {Const (Int32.of_string (s)) } (* il faudra vérifier si pas trop grand et faire int32. try... etc *)
-  |"0"(chiffre_octal+ as s) {Const (Int32.of_string( "0o" ^ s)) }
+  |"0"  {CONST Int32.zero} (* on autorise 0000 par le chemin octal*)
+  |['1'-'9'] chiffre* as s {CONST (Int32.of_string (s)) } (* il faudra vérifier si pas trop grand et faire int32. try... etc *)
+  |"0"(chiffre_octal+ as s) {CONST (Int32.of_string( "0o" ^ s)) }
   |("0x") (chiffre_hexa+ as s) 
-                  {Const (Int32.of_string("0x" ^ s)) } 
-  | "'" (caractere as c) "'" {Const (Int32.of_int (int_of_char (char_of_character (Lexing.from_string c))))}
-  | "\"" { Chaine (lire_chaine lexbuf) }
+                  {CONST (Int32.of_string("0x" ^ s)) } 
+  | "'" (caractere as c) "'" {CONST (Int32.of_int (int_of_char (char_of_character (Lexing.from_string c))))}
+  | "\"" { CHAINE (lire_CHAINE lexbuf) }
   | "/*" { comment1 lexbuf; token lexbuf }
   | "*/" { raise (Lexing_error ("no opened comment")) }
   | "//" [ ^'\n']* '\n' { token lexbuf } (* a tester *)
@@ -81,13 +81,12 @@ rule token = parse
   | "-"  { MINUS }
   | "//" { DIV }
   | "%"  { REM }
-  | "?"  { I_DOT}
   | ";"  { SEMICOLON }
-  | ":"  { COLON }
   | ","  { COMMA }
   | "&&" { AND }
   | "&"  { GET_ADRESS }
   | "||" { OR }
+  | "!"  { NOT }
   | _ as c  { raise (Lexing_error ("illegal character: " ^ String.make 1 c)) }
 
 and comment1 = parse (* pas de commentaires du même type imbriqués. ici type /* commentaire */ *)
@@ -96,13 +95,13 @@ and comment1 = parse (* pas de commentaires du même type imbriqués. ici type /* 
   | eof { raise (Lexing_error( "unfinished comment") )}
   | _  {comment1 lexbuf}
 
-and lire_chaine = parse
+and lire_CHAINE = parse
   | "\"" {""}
   | eof  {raise(Lexing_error "unfinished String" )}
   | "\n" {raise(Lexing_error "end of line before finishing string")}
-  | caractere as c {(String.make 1 (char_of_character (Lexing.from_string c))) ^(lire_chaine lexbuf)}
+  | caractere as c {(String.make 1 (char_of_character (Lexing.from_string c))) ^(lire_CHAINE lexbuf)}
 
-  (*c'est une rule qui ne sera pas appelee sur lexbuf, mais sur une chaine 
+  (*c'est une rule qui ne sera pas appelee sur lexbuf, mais sur une CHAINE 
   représentant un caractère pour le transformer en caractère caml correspondant*)
  and char_of_character = parse
 	| [ ' ' '!' '#' - '[' ']'-'_'  'a'-'~' ] as c {c}
