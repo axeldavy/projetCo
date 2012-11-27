@@ -13,6 +13,7 @@
 		  | PARENTHESIS_CLOSE | INDEX_OPEN | INDEX_CLOSE | DOT | REM | AND | OR
                   | PLUS_PLUS | MINUS_MINUS | BIN_NOT | GET_ADRESS | SIZEOF
 		  | STAR | PLUS | MINUS | DIV | I_DOT | SEMICOLON | COLON 
+                  | OPEN_BLOCK | CLOSE_BLOCK
 *)
   (* tables des mots-clés *)
   let kwd_tbl = 
@@ -50,15 +51,16 @@ rule token = parse
   | '\n' { newline lexbuf; token lexbuf } (* end of line *)
   | eof {Teof}
   |"0"  {Const Int32.zero} (* on autorise 0000 par le chemin octal*)
-  |['1'-'9'] chiffre* as s {Const (Int32.of_string (s)) } (* il faudra vérifier si pas trop grand et faire int32 *)
+  |['1'-'9'] chiffre* as s {Const (Int32.of_string (s)) } (* il faudra vérifier si pas trop grand et faire int32. try... etc *)
   |"0"(chiffre_octal+ as s) {Const (Int32.of_string( "0o" ^ s)) }
-  |("0x"|"0X") (chiffre_hexa+ as s) 
-                  {Const (Int32.of_string("0x" ^ s)) } (* doit on supporter 0X ? *)
+  |("0x") (chiffre_hexa+ as s) 
+                  {Const (Int32.of_string("0x" ^ s)) } 
   | "'" (caractere as c) "'" {Const (Int32.of_int (int_of_char (char_of_character (Lexing.from_string c))))}
   | "\"" { Chaine (lire_chaine lexbuf) }
   | "/*" { comment1 lexbuf; token lexbuf }
   | "*/" { raise (Lexing_error ("no opened comment")) }
-  | "//" { comment2 lexbuf }
+  | "//" [ ^'\n']* '\n' { token lexbuf } (* a tester *)
+  | "//" [ ^'\n']* eof { Teof }  (* en général il y a un saut à la ligne avant eof, mais dans certains cas il n'y en a pas *)
   | "->" { ARROW }
   | ">"  { OVER }
   | ">=" { OVER_OR_EQUAL }
@@ -69,6 +71,8 @@ rule token = parse
   | "!=" { NOT_EQUAL } 
   | "("  { PARENTHESIS_OPEN }
   | ")"  { PARENTHESIS_CLOSE }
+  | "{"  { OPEN_BLOCK }
+  | "}"  { CLOSE_BLOCK }
   | "["  { INDEX_OPEN }
   | "]"  { INDEX_CLOSE }
   | "."  { DOT }
@@ -91,11 +95,6 @@ and comment1 = parse (* pas de commentaires du même type imbriqués. ici type /* 
   | "\n" {newline lexbuf}
   | eof { raise (Lexing_error( "unfinished comment") )}
   | _  {comment1 lexbuf}
-
-and comment2 = parse
-  | "\n" {newline lexbuf ; token lexbuf}
-  | eof {Teof} (* problème ici: token ne va peut-être pas renvoyer TEOF *)
-  | _ { comment2 lexbuf }
 
 and lire_chaine = parse
   | "\"" {""}

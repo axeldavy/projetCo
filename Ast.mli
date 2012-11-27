@@ -31,8 +31,6 @@ les entiers, sinon au niveau du typage, ça pose pas de problème*)
   |Chaine of string
   |Variable of ident 
   |Pointer_access of expression 
- (* |Access_index of expression * expression c'est pour les expressions t[i] 
- c'est ça? dans le poly, ils disent qu'on peut remplacer cette expression par *(t+i) *)
   |Access_field of expression * ident 
   |Assignement of expression * expression
   |Call of ident * (expression list) 
@@ -58,7 +56,7 @@ and instruction = {instr : instr ; instr_pos : position}
 and bloc = {bloc : (decl_vars list) * (instruction list) ;
 	    bloc_pos : position}
 
-and cfunction = {name : string ;  body : bloc ; args : decl_vars list } 
+and cfunction = {name : string ;  body : bloc ; args : decl_vars list; rtype : ttype } 
 (* à adapter *)
 
-and program = {decl : decl list ; main: bloc }
+and program = {decl : decl list }
