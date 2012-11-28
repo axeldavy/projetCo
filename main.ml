@@ -1,6 +1,4 @@
-(*pris du td3 pour test parser et lexer *)
-
-(* Fichier principal du compilateur arithc *)
+(*Tres fort inspire du td3 *)
 
 open Format
 open Lexing
@@ -14,12 +12,12 @@ let ofile = ref ""
 
 let set_file f s = f := s 
 
-(* Les options du compilateur que l'on affiche en tapant arithc --help *)
+(* Les options du compilateur que l'on affiche en tapant minic --help *)
 let options = 
   ["-parse-only", Arg.Set parse_only, 
    "  Pour ne faire uniquement que la phase d'analyse syntaxique"]
 
-let usage = "usage: mini-pascal [option] file.pas"
+let usage = "usage: minic [option] file.c"
 
 (* localise une erreur en indiquant la ligne et la colonne *)
 let localisation pos =
@@ -48,18 +46,12 @@ let () =
   let buf = Lexing.from_channel f in
   
   try
-    (* Parsing: la fonction  Parser.prog transforme le tampon lexical en un 
-       arbre de syntaxe abstraite si aucune erreur (lexicale ou syntaxique) 
-       n'est détectée.
-       La fonction Lexer.token est utilisée par Parser.prog pour obtenir 
-       le prochain token. *)
     let p = Parser.prog Lexer.token buf in
     close_in f;
-    
-    (* On s'arrête ici si on ne veut faire que le parsing *)
-    (*if !parse_only then exit 0;
-    
-    Interp.prog p *)
+    if !parse_only then exit 0;
+    let r = Typeur.typage p in ();
+    printf "Compilation de %s terminee@." !ifile;
+    exit 0 
   with
     | Lexer.Lexing_error c -> 
 	(* Erreur lexicale. On récupère sa position absolue et 
@@ -73,7 +65,14 @@ let () =
 	localisation (Lexing.lexeme_start_p buf);
 	eprintf "Erreur dans l'analyse syntaxique@.";
 	exit 1
-
-	
-
+    | Typeur.Type_error (p,s) -> 
+        localisation (fst p) ;
+        eprintf "Erreur de Typage: %s @." s;
+        exit 1
+    | Typeur.Argtype_error (pos,id,l) -> 
+	localisation (fst pos) ; 
+	eprintf "Erreur de Typage: les arguments attendus de la fonction '%s' sont du type : @." id ;
+	List.iter (fun t -> eprintf "%s, " (Definition.string_of_type (Typeur.ttype_of_mtype t))) l ; 
+	eprintf "@.";	
+	exit 1 
  

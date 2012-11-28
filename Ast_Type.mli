@@ -49,18 +49,9 @@ and instruction = {tinstr : instr ; tinstr_pos : position }
  
 and bloc = {tbloc : (decl_vars list) * (instruction list) ; tbloc_pos : position}
 
+and program = {tdecl : decl list }
 
-exception Type_error of position * string
-exception Argtype_error of position * string * (mtype list)
-(*== erreur à la position pos, la fonction (l'opérateur string) a eu les types de la liste en argument *)	
-exception Returntype_error of position * mtype * mtype 
-(*erreur à la position pos, got type1, expected type2*)
 
-(* on conserve dans l'environnement le type de toutes les variables et les fonctions, ainsi que
-les structures et unions
-Le champ arg permet de savoir si l'indent donné correspond à une variable, ou une fonction
-et donne les types des arguments de la fonction*)
-module SMap = Map.Make(String) 
 
 (*type des éléments de l'environnement, il doit contenir les variables, les fonctions, 
 et les structures et unions de types*)	

@@ -1,6 +1,6 @@
-CMO=lexer.cmo parser.cmo main.cmo
+CMO=lexer.cmo parser.cmo Definition.cmo typeur.cmo main.cmo 
 GENERATED = lexer.ml parser.ml parser.mli 
-BIN=test
+BIN=minic
 FLAGS=
 
 all: $(BIN)

@@ -5,7 +5,8 @@
   
   exception Lexing_error of string
 
-  (* type tokenres = Teof | CONST of Int32.t | NAME of string | CHAINE of string 
+  (* les differents token:
+      tokenres = Teof | CONST of Int32.t | NAME of string | CHAINE of string 
 		  | IF | THEN | ELSE | FUNCTION |STRUCT | UNION | INT | CHAR
                   | VOID | NULL | FOR | WHILE | RETURN | ARROW
 		  | OVER | OVER_OR_EQUAL | EQUAL_EQUAL | EQUAL 
@@ -17,10 +18,10 @@
 *)
   (* tables des mots-clés *)
   let kwd_tbl = 
-    ["if", IF; (*"then", THEN;*) "else", ELSE;
-     (*"function", FUNCTION;*) "struct", STRUCT; "union", UNION; "int", INT; 
-     "void",VOID; (*"NULL",NULL;*) "char", INT; "for", FOR;
-     "while", WHILE; "return", RETURN; "sizeof", SIZEOF; (* rajouter putchar et sbrk ? *)
+    ["if", IF; "else", ELSE;
+     "struct", STRUCT; "union", UNION; "int", INT; 
+     "void",VOID; "char", CHAR; "for", FOR;
+     "while", WHILE; "return", RETURN; "sizeof", SIZEOF;
     ]
 
   let id_or_kwd = 
@@ -51,16 +52,26 @@ rule token = parse
   | '\n' { newline lexbuf; token lexbuf } (* end of line *)
   | eof {Teof}
   |"0"  {CONST Int32.zero} (* on autorise 0000 par le chemin octal*)
-  |['1'-'9'] chiffre* as s {CONST (Int32.of_string (s)) } (* il faudra vérifier si pas trop grand et faire int32. try... etc *)
-  |"0"(chiffre_octal+ as s) {CONST (Int32.of_string( "0o" ^ s)) }
-  |("0x") (chiffre_hexa+ as s) 
-                  {CONST (Int32.of_string("0x" ^ s)) } 
+  |['1'-'9'] chiffre* as s {try 
+                              CONST (Int32.of_string (s)) 
+			    with Failure _ -> raise(Lexing_error "entier trop grand")
+				}
+  |"0"(chiffre_octal+ as s) {try 
+                              CONST (Int32.of_string ("0o" ^ s)) 
+			    with Failure _ -> raise(Lexing_error "entier trop grand")
+				}
+  |("0x") (chiffre_hexa+ as s) {try 
+                              CONST (Int32.of_string ("0x" ^ s)) 
+			    with Failure _ -> raise(Lexing_error "entier trop grand")
+				}
   | "'" (caractere as c) "'" {CONST (Int32.of_int (int_of_char (char_of_character (Lexing.from_string c))))}
   | "\"" { CHAINE (lire_CHAINE lexbuf) }
   | "/*" { comment1 lexbuf; token lexbuf }
   | "*/" { raise (Lexing_error ("no opened comment")) }
-  | "//" [ ^'\n']* '\n' { token lexbuf } (* a tester *)
-  | "//" [ ^'\n']* eof { Teof }  (* en général il y a un saut à la ligne avant eof, mais dans certains cas il n'y en a pas *)
+  | "//" [ ^'\n']* '\n' { token lexbuf }
+  | "//" [ ^'\n']* eof { Teof }  
+        (* en général il y a un saut à la ligne avant eof, 
+           mais dans certains cas il n'y en a pas *)
   | "->" { ARROW }
   | ">"  { OVER }
   | ">=" { OVER_OR_EQUAL }
@@ -78,8 +89,10 @@ rule token = parse
   | "."  { DOT }
   | "*"  { STAR }
   | "+"  { PLUS }
+  | "++"  { PLUS_PLUS }
   | "-"  { MINUS }
-  | "//" { DIV }
+  | "--"  { MINUS_MINUS }
+  | "/" { DIV }
   | "%"  { REM }
   | ";"  { SEMICOLON }
   | ","  { COMMA }
@@ -89,9 +102,9 @@ rule token = parse
   | "!"  { NOT }
   | _ as c  { raise (Lexing_error ("illegal character: " ^ String.make 1 c)) }
 
-and comment1 = parse (* pas de commentaires du même type imbriqués. ici type /* commentaire */ *)
+and comment1 = parse
   | "*/" {}
-  | "\n" {newline lexbuf}
+  | "\n" {newline lexbuf; comment1 lexbuf;}
   | eof { raise (Lexing_error( "unfinished comment") )}
   | _  {comment1 lexbuf}
 
