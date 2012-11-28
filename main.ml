@@ -71,8 +71,8 @@ let () =
         exit 1
     | Typeur.Argtype_error (pos,id,l) -> 
 	localisation (fst pos) ; 
-	eprintf "Erreur de Typage: les arguments attendus de la fonction '%s' sont du type : @." id ;
-	List.iter (fun t -> eprintf "%s, " (Definition.string_of_type (Typeur.ttype_of_mtype t))) l ; 
+	eprintf "Erreur de Typage: les arguments reçus de '%s' sont du type : @." id ;
+	List.iter (fun t -> eprintf "%s, " (Typeur.string_of_mtype t)) l ; 
 	eprintf "@.";	
 	exit 1 
  

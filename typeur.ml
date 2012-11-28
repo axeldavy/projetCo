@@ -6,7 +6,7 @@ open Definition
 
 exception Type_error of position * string
 exception Argtype_error of position * string * (mtype list)
-(*== erreur à la position pos, la fonction (l'opérateur string) a eu les types de la liste en argument *)	
+(*== erreur à la position pos, la fonction (l'opérateur) string a eu les types de la liste en argument *)	
 exception Returntype_error of position * mtype * mtype 
 (*erreur à la position pos, got type1, expected type2*)
 
@@ -66,6 +66,7 @@ let rec ttype_of_mtype = function
 	| TPointer t -> Pointer (ttype_of_mtype t)	
 
 let string_of_mtype t= string_of_type (ttype_of_mtype t)
+
 	
 (*dit si un opérateur binaire est un opérateur de comparaison ou non*)
 let compop = function 
@@ -243,11 +244,11 @@ let rec exprType env n =  match n.exp with
 	| Empty -> {tinstr = TEmpty ; tinstr_pos = i.instr_pos}
 	| Expression e -> {tinstr = TExpression (exprType env e) ; tinstr_pos = i.instr_pos}
 	| Return None -> if t0 = TVoid then {tinstr = TReturn None ; tinstr_pos = i.instr_pos}
-		else raise (Type_error (i.instr_pos,"le type de retour est "^(string_of_type (ttype_of_mtype t0))^" au lieu de void "))
+		else raise (Type_error (i.instr_pos,"le type de retour est "^(string_of_mtype t0)^" au lieu de void "))
 	| Return (Some e) -> let e' = exprType env e in 
 		if equiv t0 e'.texp_type 
 			then {tinstr = TReturn (Some e') ; tinstr_pos = i.instr_pos}
-			else raise (Type_error (i.instr_pos,"le type de retour est "^(string_of_type (ttype_of_mtype t0))^" au lieu de "^(string_of_type (ttype_of_mtype e'.texp_type))  ))
+			else raise (Type_error (i.instr_pos,"le type de retour est "^(string_of_mtype t0)^" au lieu de "^(string_of_mtype e'.texp_type)))
 	| If(e,i1,i2) -> let e' = exprType env e in 
 		if num e'.texp_type then 
 		  let i1' = instrType env t0 i1 in 
@@ -297,6 +298,12 @@ let rec fileType env l =
 	| Dt dt -> begin
 		match dt.dectype with 
 		  | Dstruct (id,lvar) ->
+		  	let _ = List.fold_left (fun li dv -> 
+			let x = snd dv.decvar in 
+			if List.mem x li
+			then raise (Type_error (dt.dectype_pos, "argument '"^x^"' is defined twice"))
+			else x::li) [] lvar 
+			in
 			let new_stru = 
 				let l = List.map (fun dv ->
 				  let t = mtype_of_ttype env dv.decvar_pos (fst dv.decvar) in 
@@ -315,6 +322,12 @@ let rec fileType env l =
 			let env2,l2 = fileType env' (List.tl l) in 
 			env2,(dv'::l2)
 		  | Dunion (id,lvar) -> 
+		  	let _ = List.fold_left (fun li dv -> 
+			let x = snd dv.decvar in 
+			if List.mem x li
+			then raise (Type_error (dt.dectype_pos, "argument '"^x^"' is defined twice"))
+			else x::li) [] lvar 
+			in
 			let new_uni = 
 				let l = List.map (fun dv ->
 				  let t = mtype_of_ttype env dv.decvar_pos (fst dv.decvar) in 
@@ -365,4 +378,24 @@ let rec fileType env l =
 		env2,(dv'::l2)
 
 let typage p = 
-  {tdecl = snd (fileType SMap.empty p.decl)}
+	let sbrk = MFun {f_name = "sbrk" ; f_type = TPointer (TVoid) ; f_arg = [TInt,"n"]}
+	and putchar = MFun {f_name = "putchar" ; f_type = TInt ; f_arg = [TInt,"c"]} in 
+	let env0 = SMap.add "fun_sbrk" sbrk (SMap.singleton "fun_putchar" putchar) in
+	let env,l = (fileType env0 p.decl) in 
+	let pos = (Lexing.dummy_pos,Lexing.dummy_pos) in 
+	(*la position renvoyée des erreur ne correspond ici à rien*)
+	try begin 
+	let f' = SMap.find "fun_main" env in 
+	match f' with 
+		| MFun f -> if not (f.f_type = TInt) then raise (Type_error (pos,"invalid type for function main")) ;
+			begin 
+			match f.f_arg with 
+				| [] | [TInt,_ ; TPointer(TPointer(TChar)),_] -> () ;
+				| _ -> 
+			let lt = List.map (fun (t,id) -> t) f.f_arg in 
+			raise (Argtype_error (pos,"main",lt))
+			end ;
+		| MVar _ | MUni _ | MStr _ -> assert false
+	end ;
+  	{tdecl = l}
+  	with Not_found -> raise (Type_error (pos,"function main is missing"))
