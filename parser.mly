@@ -32,7 +32,7 @@
 %right PLUS_PLUS MINUS_MINUS get_pointer unaire
 %left PARENTHESIS_OPEN PARENTHESIS_CLOSE INDEX_OPEN INDEX_CLOSE ARROW DOT
 %left ELSE
-(*vérif à faire sur la dernière ligne, les parenthèses, et index*)
+
 
 
 /* Point d'entrée de la grammaire */
@@ -165,7 +165,7 @@ decl_typ:
 
 argument:
   t = vtype
-  ls = list(STAR) (*selon le poly, les arguments ne peuvent pas être des pointeurs*)
+  ls = list(STAR) 
   id = ident
   {  get_type_star (t,ls) ,id  }
   

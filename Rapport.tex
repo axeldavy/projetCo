@@ -1,0 +1,82 @@
+\documentclass[a4paper]{article}
+\usepackage[latin1]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[francais]{babel}
+\usepackage{verbatim}
+\usepackage{hyperref}
+
+
+
+\author{Axel Davy et Marc Heinrich}
+\title{Présentation de notre compilateur}
+\begin{document}
+\maketitle
+
+\section{Options disponibles}
+syntaxe : main (options) filename
+\begin{itemize}
+     \item {-parse-only : S'arrète après l'analyse syntaxique }
+     \item {-type-only : S'arrète après le typage }
+\end{itemize}
+\section{Difficultés rencontrées}
+Outre les erreurs corrigées à la compilation et les erreurs corrigées
+automatiquement, on a corrigé pas mal d'oublis lors des tests sur les
+fichiers de test.
+
+On a changé légèrement l'arbre de syntaxe abstraite à plusieurs reprises
+pour s'adapter à nos besoins.
+
+On a choisi de faire deux arbres différents: un arbre de syntaxe abstraite
+pour le parseur (avec un type 'ttype' pour les variables adapté) et un arbre typé avec des
+étiquettes supplémentaires pour le typeur (avec un type 'mtype' adapté).
+
+\subsection{Lexeur}
+Ici on a eu surtout des erreurs dans le parseur causées par des oublis dans
+le lexeur.
+
+On a eu aussi une légère difficulté pour gérer les caractères spéciaux dans
+les chaînes de caractères.
+
+\subsection{Parseur}
+
+On a pris quelques libertés par rapport aux règles proposées dans le
+dossier au niveau de la représentation des variables et leur
+déclarations. En effet nous avons trouvé que la règle <var> n'était pas très pratique pour gérer
+les déclarations de variables.
+
+Bien sûr nous avons eu quelques soucis pour régler certains problèmes. On a
+eu un peu de mal à gérer les opérateurs unaires, et le
+problème du dandling else a été résolu assez tard en donnant une priorité
+plus élévée à else. 
+
+
+\subsection{Typeur}
+
+Pour le typeur, on fait certains choix, comme de rajouter outre les champs
+pour le type des expressions, des champs qui pourront être utilisés lors de
+la phase de production de code (un champs de localisation pour les
+variables locales donnant leur position sur la pile, ou un champ pour
+enregistrer la taille des différentes unions et structures déclarées). On a
+eu quelque problème avec les structures récursives, qui ne fonctionnait
+pas, ou qui après bouclaient quand on essayait de les comparer. 
+
+On a eu du mal aussi à gérer les problèmes de visibilité des variables
+locales, et leur éventuelle redéfinition dans des blocs.
+Le code du typeur est assez long, notamment à cause des nombreux tests, et
+de la conversion d'un type d'arbre à un autre.
+
+Contrairement à gcc qui accepte n'importe quels arguments (en nombre et en type) pour la fonction
+main, nous obligeons qu'il y ait soit aucun argument, soit deux arguments
+bien typés.
+
+\section{Remarques}
+Nous avons pu réaliser que la programmation d'un compilateur est très
+fastidieuse. 
+
+
+Vous pouvez voir notre avancement durant l'année en regardant notre serveur
+github: 
+\url {https://github.com/axeldavy/projetCo}
+
+
+\end{document}

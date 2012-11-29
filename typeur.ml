@@ -19,11 +19,16 @@ let not_rec = function
   | TInt | TChar  | TTypenull -> true
   | _ -> false
         
-let equiv t1 t2 = match t1,t2 with  
+let rec equiv t1 t2 = match t1,t2 with  
   | _,_ when (not_rec t1)&& (not_rec t2) -> true
   | TTypenull, (TPointer _) | (TPointer _), TTypenull -> true 
   | (TPointer TVoid),(TPointer _) | (TPointer _),(TPointer TVoid) -> true
-  |  _,_  -> t1 = t2
+  | (TStruct s1),(TStruct s2) -> s1.s_name = s2.s_name
+  | (TUnion u1),(TUnion u2) -> u1.u_name = u2.u_name
+  | (TStruct _),_ | (TUnion _),_ | _,(TUnion _) | _,(TStruct _) -> false
+  | (TPointer p1),(TPointer p2) -> equiv p1 p2
+  | TVoid,TVoid -> true
+  | _,_ -> false
       
 
 let rec num = function 
@@ -104,8 +109,7 @@ globales ou locales*)
 	  | MVar (TGvar _) when local -> ()
 	  | MVar (TGvar _) -> raise (Type_error 
               (dv.decvar_pos, "trying to redefine variable '"^id^"'"))
-	  | MVar (TLvar _) -> raise (Type_error 
-              (dv.decvar_pos, "trying to redefine variable '"^id^"'"))
+	  | MVar (TLvar _) -> ()
 	  | _ -> assert false
 	with Not_found -> () ;
 	end ;
@@ -209,9 +213,9 @@ let rec exprType env n =  match n.exp with
   | Assignement (e1,e2) ->
       let e1' = exprType env e1 and e2' = exprType env e2 in 
       if lvalue e1'.texp then
-        let t1 = e1'.texp_type and t2 = e2'.texp_type in
+        let t1 = e1'.texp_type and t2 = e2'.texp_type in 
 	if equiv t1 t2 then 
-          {texp = TAssignement (e1',e2'); texp_pos =n.exp_pos ; texp_type = t1}
+          {texp = TAssignement (e1',e2'); texp_pos =n.exp_pos ; texp_type = t1} 
 	else
 	  raise (Type_error 
             (n.exp_pos,"incompatible types when assigning to type " ^ 
@@ -355,7 +359,7 @@ let rec instrType env t0 i = match i.instr with
         in
 	ti
 	  (*on remplace l'instruction for, par une autre équivalente avec 
-            while, vérifier que c'est bien à ça que ça correspond*)
+            while*)
       else raise (Type_error 
         (i.instr_pos, "used type " ^(string_of_mtype e'.texp_type)^
           " value where scalar is required"))
@@ -364,6 +368,13 @@ let rec instrType env t0 i = match i.instr with
     let aux = fun (e,l) dv -> let e',dv' = var_decType true e dv 
                                in e', (dv'::l) 
     in 
+    let _ = List.fold_left (fun li dv -> 
+ 	let x = snd dv.decvar in 
+	if List.mem x li
+	then raise (Type_error 
+          (dv.decvar_pos, "argument '"^x^"' is defined twice"))
+	else x::li) [] l1 
+    in
     let env',l1' = List.fold_left aux (env,[]) l1 in 
     let l2' = List.map (instrType env' t0) l2 in 
     {tinstr = TBloc{tbloc = l1',l2' ; tbloc_pos = b.bloc_pos} ; 
@@ -395,11 +406,10 @@ let rec fileType env l =
                     (dt.dectype_pos, "argument '"^x^"' is defined twice"))
 		  else x::li) [] lvar 
 		in
-                let envtemp = SMap.add ("str_"^id) 
-                  (MStr {s_name = id ;s_content = [] ; s_size = 0 }) env in 
-		let new_stru = 
-		  let l = List.map (fun dv ->
-		    let t = mtype_of_ttype envtemp dv.decvar_pos (fst dv.decvar)
+		let new_stru = {s_name = id ; s_content = [] ; s_size = 0} in
+                let env' = SMap.add ("str_"^id) (MStr new_stru) env in 
+		  let l1 = List.map (fun dv ->
+		  let t = mtype_of_ttype env' dv.decvar_pos (fst dv.decvar)
                     in 
 		    if equiv t TVoid 
                     then raise (Type_error 
@@ -407,14 +417,12 @@ let rec fileType env l =
                         "' is declared void")) ;
 		    (snd dv.decvar,t)
 		  ) lvar 
-		  in
-		  {s_name = id ; s_content = l ; s_size = 0}
-		in
+		  in		
+		new_stru.s_content <- l1 ;
                 if(SMap.mem ("str_"^id) env) || (SMap.mem ("uni_"^id) env)
                 then raise (Type_error 
                   (dt.dectype_pos,"already defined structure '"^id^"'")); 
-		let env' = (SMap.add ("str_"^id) (MStr new_stru) env)
-		and dv' = TDt {tdectype = TDstruct new_stru ; 
+		let dv' = TDt {tdectype = TDstruct new_stru ; 
                 tdectype_pos = dt.dectype_pos} 
                 in
 		List.iter 
@@ -427,7 +435,7 @@ let rec fileType env l =
 		let env2,l2 = fileType env' (List.tl l) in 
 		env2,(dv'::l2)
 
-	    | Dunion (id,lvar) -> 
+	   | Dunion (id,lvar) -> 
 		let _ = List.fold_left (fun li dv -> 
 		  let x = snd dv.decvar in 
 		  if List.mem x li
@@ -435,20 +443,19 @@ let rec fileType env l =
                     (dt.dectype_pos, "argument '"^x^"' is defined twice"))
 		  else x::li) [] lvar 
 		in
-                let envtemp = SMap.add ("uni_"^id) 
-                  (MUni {u_name = id ;u_content = [] ; u_size = 0 }) env in
-		let new_uni = 
-		  let l = List.map (fun dv ->
-		    let t = mtype_of_ttype envtemp dv.decvar_pos (fst dv.decvar)
+		let new_uni = {u_name = id ; u_content = [] ; u_size = 0} in
+                let env' = SMap.add ("uni_"^id) (MUni new_uni) env in 
+		  let l1 = List.map (fun dv ->
+		  let t = mtype_of_ttype env' dv.decvar_pos (fst dv.decvar)
                     in 
 		    if equiv t TVoid 
                     then raise (Type_error 
                       (dv.decvar_pos, "variable '"^(snd dv.decvar)^
                         "' is declared void")) ;
 		    (snd dv.decvar,t)
-		  ) lvar in
-		  {u_name = id ; u_content = l ; u_size = 0}
-		in
+		  ) lvar 
+		  in		
+		new_uni.u_content <- l1 ;
                if(SMap.mem ("str_"^id) env) || (SMap.mem ("uni_"^id) env)
                 then raise (Type_error 
                   (dt.dectype_pos,"already defined union '"^id^"'")); 
@@ -474,11 +481,11 @@ let rec fileType env l =
 	  then raise (Type_error 
 	    (df.decfun_pos,"type of variable '"^x^"' not well formed") )
 	) lvar ; 
-	let _ = List.fold_left (fun lvar (_,x) -> 
-	  if List.mem x lvar 
+	let _ = List.fold_left (fun li (_,x) -> 
+	  if List.mem x li 
 	  then raise (Type_error (df.decfun_pos, "argument '"^x^
             "' is defined twice"))
-	  else x::lvar) [] lvar 
+	  else x::li) [] lvar 
 	in
 	let new_fun = 
 	  {f_name = id; 

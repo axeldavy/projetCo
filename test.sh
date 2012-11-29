@@ -1,5 +1,5 @@
 
 
 for i in `ls test/ | grep \\\\.c` ; do
-	./minic test/$i
+	./minic -parse-only test/$i
 done

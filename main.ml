@@ -51,11 +51,10 @@ let () =
   try
     let p = Parser.prog Lexer.token buf in
     close_in f;
-    if !parse_only then exit 0;
-    let r = Typeur.typage p in ();
-    printf "Typage de %s terminee@." !ifile;
-    if !type_only then exit 0;
-    exit 0  (* de toute façon on s'arrete au typage pour l'instant*)
+    if !parse_only then (printf "Parsing de %s terminee@." !ifile; exit 0);
+    let _ = Typeur.typage p in ();
+    if !type_only then ( printf "Typage de %s terminee@." !ifile; exit 0);
+    exit 0 (* de toute façon on s'arrete au typage pour l'instant*)
   with
     | Lexer.Lexing_error c -> 
 	(* Erreur lexicale. On récupère sa position absolue et 
@@ -75,7 +74,8 @@ let () =
         exit 1
     | Typeur.Argtype_error (pos,id,l) -> 
 	localisation (fst pos) ; 
-	eprintf "Erreur de Typage: les arguments reçus de '%s' sont du type : @." id ;
+	eprintf 
+         "Erreur de Typage: les arguments reçus de '%s' sont du type : @." id ;
 	List.iter (fun t -> eprintf "%s, " (Typeur.string_of_mtype t)) l ; 
 	eprintf "@.";	
 	exit 1 

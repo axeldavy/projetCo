@@ -24,7 +24,7 @@ $(BIN):$(CMO)
 	menhir -v $<
 
 clean:
-	rm -f *.cm[io] *.o *~ $(BIN) $(GENERATED) parser.output
+	rm -f *.cm[io] *.o *~ $(BIN) $(GENERATED) parser.output parser.automaton parser.conflicts
 
 .depend depend:$(GENERATED)
 	rm -f .depend
