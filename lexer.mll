@@ -54,17 +54,17 @@ rule token = parse
   |"0"  {CONST Int32.zero} (* on autorise 0000 par le chemin octal*)
   |['1'-'9'] chiffre* as s {try 
                               CONST (Int32.of_string (s)) 
-			    with Failure _ -> raise(Lexing_error "entier trop grand")
+			    with Failure _ -> Format.eprintf "Warning: Constant overflow@."; CONST(Int32.zero)
 				}
   |"0"(chiffre_octal+ as s) {try 
                               CONST (Int32.of_string ("0o" ^ s)) 
-			    with Failure _ -> raise(Lexing_error "entier trop grand")
+			    with Failure _ -> Format.eprintf "Warning: Constant overflow@."; CONST(Int32.zero)
 				}
   |("0x") (chiffre_hexa+ as s) {try 
                               CONST (Int32.of_string ("0x" ^ s)) 
-			    with Failure _ -> raise(Lexing_error "entier trop grand")
+			    with Failure _ -> Format.eprintf "Warning: Constant overflow@."; CONST(Int32.zero)
 				}
-  | "'" (caractere as c) "'" {CONST (Int32.of_int (int_of_char (char_of_character (Lexing.from_string c))))}
+  | "'" (caractere as c) "'" {CHARACTER  ((char_of_character (Lexing.from_string c))) }
   | "\"" { CHAINE (lire_CHAINE lexbuf) }
   | "/*" { comment1 lexbuf; token lexbuf }
   | "*/" { raise (Lexing_error ("no opened comment")) }

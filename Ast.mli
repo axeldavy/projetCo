@@ -24,9 +24,7 @@ and decl =
 	|Df of decl_fun
 
 and expr = 
-  |Character of char (*est ce qu'il faut pas les laisser quand même 
-parce qu'ils sont codés sur seulement 1 octet en mémoire, et pas 4 comme 
-les entiers, sinon au niveau du typage, ça pose pas de problème*)
+  |Character of char
   |Entier of (Int32.t)
   |Chaine of string
   |Variable of ident 

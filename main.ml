@@ -5,6 +5,7 @@ open Lexing
 
 (* Option de compilation, pour s'arrêter à l'issue du parser *)
 let parse_only = ref false
+let type_only = ref false
 
 (* Noms des fichiers source et cible *)
 let ifile = ref ""
@@ -15,7 +16,9 @@ let set_file f s = f := s
 (* Les options du compilateur que l'on affiche en tapant minic --help *)
 let options = 
   ["-parse-only", Arg.Set parse_only, 
-   "  Pour ne faire uniquement que la phase d'analyse syntaxique"]
+   "  Pour ne faire uniquement que la phase d'analyse syntaxique" ;
+   "-type-only", Arg.Set type_only, 
+   "  Pour ne faire uniquement que la phase de typage"]
 
 let usage = "usage: minic [option] file.c"
 
@@ -50,8 +53,9 @@ let () =
     close_in f;
     if !parse_only then exit 0;
     let r = Typeur.typage p in ();
-    printf "Compilation de %s terminee@." !ifile;
-    exit 0 
+    printf "Typage de %s terminee@." !ifile;
+    if !type_only then exit 0;
+    exit 0  (* de toute façon on s'arrete au typage pour l'instant*)
   with
     | Lexer.Lexing_error c -> 
 	(* Erreur lexicale. On récupère sa position absolue et 

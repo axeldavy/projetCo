@@ -11,6 +11,7 @@
 %}
 
 %token <Int32.t> CONST
+%token <char> CHARACTER
 %token <string> NAME
 %token <string> CHAINE
 %token DOT IF ELSE STRUCT UNION Teof 
@@ -30,6 +31,7 @@
 %left STAR DIV REM
 %right PLUS_PLUS MINUS_MINUS get_pointer unaire
 %left PARENTHESIS_OPEN PARENTHESIS_CLOSE INDEX_OPEN INDEX_CLOSE ARROW DOT
+%left ELSE
 (*vérif à faire sur la dernière ligne, les parenthèses, et index*)
 
 
@@ -68,6 +70,7 @@ expression :
   e = expr {{exp = e; exp_pos = ($startpos,$endpos)}} 
 expr:
   | c = CONST {Entier c}
+  | c = CHARACTER {Character c}
   | ch=CHAINE {Chaine ch}
   | id = NAME {Variable id}
   | STAR e = expression  %prec get_pointer {Pointer_access e}  
@@ -86,7 +89,7 @@ expr:
   | e1 = expression o = op e2 = expression {Binop(o,e1,e2)}
   | e1 = expression c = cmp e2 = expression {Binop(c,e1,e2)}
   | SIZEOF PARENTHESIS_OPEN t = vtype ls = list (STAR) PARENTHESIS_CLOSE
-        {Format.eprintf "aie" ;Sizeof (get_type_star(t,ls) ) }  
+        {Sizeof (get_type_star(t,ls) ) }  
   | PARENTHESIS_OPEN e = expression PARENTHESIS_CLOSE { e.exp }
 
 

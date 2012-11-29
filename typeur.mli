@@ -4,7 +4,7 @@ open Definition
 
 exception Type_error of position * string
 exception Argtype_error of position * string * (mtype list)
-exception Returntype_error of position * mtype * mtype 
+
 
 
 module SMap : Map.S with type key = string
@@ -18,6 +18,8 @@ val lvalue : Ast_Type.expr -> bool
 val mtype_of_ttype : mapelt SMap.t ->  position-> ttype -> mtype
 
 val ttype_of_mtype : mtype -> ttype
+
+val string_of_mtype : mtype -> string
 
 val bien_forme : mapelt SMap.t -> mtype -> bool
 
