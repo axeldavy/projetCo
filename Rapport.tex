@@ -8,73 +8,75 @@
 
 
 \author{Axel Davy et Marc Heinrich}
-\title{PrÃ©sentation de notre compilateur}
+\title{Présentation de notre compilateur}
 \begin{document}
 \maketitle
 
 \section{Options disponibles}
-syntaxe : main (options) filename
+syntaxe : minic (options) filename
 \begin{itemize}
-     \item {-parse-only : S'arrÃ¨te aprÃ¨s l'analyse syntaxique }
-     \item {-type-only : S'arrÃ¨te aprÃ¨s le typage }
+     \item {-parse-only : S'arrète après l'analyse syntaxique }
+     \item {-type-only : S'arrète après le typage }
 \end{itemize}
-\section{DifficultÃ©s rencontrÃ©es}
-Outre les erreurs corrigÃ©es Ã  la compilation et les erreurs corrigÃ©es
-automatiquement, on a corrigÃ© pas mal d'oublis lors des tests sur les
+\section{Difficultés rencontrées}
+Outre les erreurs corrigées à la compilation et les erreurs corrigées
+automatiquement, on a corrigé pas mal d'oublis lors des tests sur les
 fichiers de test.
 
-On a changÃ© lÃ©gÃ¨rement l'arbre de syntaxe abstraite Ã  plusieurs reprises
-pour s'adapter Ã  nos besoins.
+On a changé légèrement l'arbre de syntaxe abstraite à plusieurs reprises
+pour s'adapter à nos besoins.
 
-On a choisi de faire deux arbres diffÃ©rents: un arbre de syntaxe abstraite
-pour le parseur (avec un type 'ttype' pour les variables adaptÃ©) et un arbre typÃ© avec des
-Ã©tiquettes supplÃ©mentaires pour le typeur (avec un type 'mtype' adaptÃ©).
+On a choisi de faire deux arbres différents: un arbre de syntaxe abstraite
+pour le parseur (avec un type 'ttype' pour les variables adapté) et un arbre typé avec des
+étiquettes supplémentaires pour le typeur (avec un type 'mtype' adapté).
 
 \subsection{Lexeur}
-Ici on a eu surtout des erreurs dans le parseur causÃ©es par des oublis dans
+Ici on a eu surtout des erreurs dans le parseur causées par des oublis dans
 le lexeur.
 
-On a eu aussi une lÃ©gÃ¨re difficultÃ© pour gÃ©rer les caractÃ¨res spÃ©ciaux dans
-les chaÃ®nes de caractÃ¨res.
+On a eu aussi une légère difficulté pour gérer les caractères spéciaux dans
+les chaînes de caractères.
 
 \subsection{Parseur}
 
-On a pris quelques libertÃ©s par rapport aux rÃ¨gles proposÃ©es dans le
-dossier au niveau de la reprÃ©sentation des variables et leur
-dÃ©clarations. En effet nous avons trouvÃ© que la rÃ¨gle <var> n'Ã©tait pas trÃ¨s pratique pour gÃ©rer
-les dÃ©clarations de variables.
+On a pris quelques libertés par rapport aux règles proposées dans le
+dossier au niveau de la représentation des variables et leur
+déclarations. En effet nous avons trouvé que la règle <var> n'était pas très pratique pour gérer
+les déclarations de variables.
 
-Bien sÃ»r nous avons eu quelques soucis pour rÃ©gler certains problÃ¨mes. On a
-eu un peu de mal Ã  gÃ©rer les opÃ©rateurs unaires, et le
-problÃ¨me du dandling else a Ã©tÃ© rÃ©solu assez tard en donnant une prioritÃ©
-plus Ã©lÃ©vÃ©e Ã  else. 
+Bien sûr nous avons eu quelques soucis pour régler certains problèmes. On a
+eu un peu de mal à gérer les opérateurs unaires, et le
+problème du dandling else a été résolu assez tard en donnant une priorité
+plus élévée à else. 
 
 
 \subsection{Typeur}
 
 Pour le typeur, on fait certains choix, comme de rajouter outre les champs
-pour le type des expressions, des champs qui pourront Ãªtre utilisÃ©s lors de
+pour le type des expressions, des champs qui pourront être utilisés lors de
 la phase de production de code (un champs de localisation pour les
 variables locales donnant leur position sur la pile, ou un champ pour
-enregistrer la taille des diffÃ©rentes unions et structures dÃ©clarÃ©es). On a
-eu quelque problÃ¨me avec les structures rÃ©cursives, qui ne fonctionnait
-pas, ou qui aprÃ¨s bouclaient quand on essayait de les comparer. 
+enregistrer la taille des différentes unions et structures déclarées). On a
+eu quelques problème avec les structures récursives, qui ne fonctionnaient
+pas, ou qui provoquaient une boucle infinie quand on essayait de les comparer avec '='. 
 
-On a eu du mal aussi Ã  gÃ©rer les problÃ¨mes de visibilitÃ© des variables
-locales, et leur Ã©ventuelle redÃ©finition dans des blocs.
-Le code du typeur est assez long, notamment Ã  cause des nombreux tests, et
-de la conversion d'un type d'arbre Ã  un autre.
+On a eu du mal aussi à gérer les problèmes de visibilité des variables
+locales, et leur éventuelle redéfinition dans des blocs.
 
-Contrairement Ã  gcc qui accepte n'importe quels arguments (en nombre et en type) pour la fonction
+
+Le code du typeur est assez long, notamment à cause des nombreux tests, et
+de la conversion d'un type d'arbre à un autre.
+
+Contrairement à gcc qui accepte n'importe quels arguments (en nombre et en type) pour la fonction
 main, nous obligeons qu'il y ait soit aucun argument, soit deux arguments
-bien typÃ©s.
+bien typés.
 
 \section{Remarques}
-Nous avons pu rÃ©aliser que la programmation d'un compilateur est trÃ¨s
+Nous avons pu réaliser que la programmation d'un compilateur est très
 fastidieuse. 
 
 
-Vous pouvez voir notre avancement durant l'annÃ©e en regardant notre serveur
+Vous pouvez voir notre avancement durant l'année en regardant notre serveur
 github: 
 \url {https://github.com/axeldavy/projetCo}
 
