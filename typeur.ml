@@ -185,7 +185,7 @@ let rec exprType env n =  match n.exp with
 		try
 	          { texp = TAccess_field(e',x); 
                   texp_pos = n.exp_pos ; 
-                  texp_type = snd (List.find (fun (y,t) -> y = x) u.u_content)};
+                  texp_type = snd (List.find (fun var -> var.lv_name = x) u.u_content)};
 		with Not_found -> raise (Type_error 
                   (n.exp_pos,"l'identificateur " ^x^ "n'apparait pas dans " ^ 
                     "uni " ^ u.u_name ))
@@ -197,7 +197,7 @@ let rec exprType env n =  match n.exp with
 		try
 		  { texp = TAccess_field(e',x); 
                   texp_pos = n.exp_pos ; 
-                  texp_type = snd (List.find (fun (y,t) -> y = x) s.s_content)};
+                  texp_type = snd (List.find (fun var -> var.lv_name = x) s.s_content)};
 		with Not_found -> raise (Type_error 
                   (n.exp_pos,"l'identificateur " ^x^ "n'apparait pas dans " ^ 
                     "str " ^ s.s_name ))
@@ -282,7 +282,7 @@ let rec exprType env n =  match n.exp with
 	| MFun f -> let l = List.map (exprType env) l in
 	  let lt'= List.map (fun e -> e.texp_type) l in
 	  let b = List.fold_left2 
-            (fun b (t1,_) t2 -> b&&(equiv t1 t2)) true f.f_arg lt' in
+            (fun b arg1 t2 -> b&&(equiv arg1.lv_type t2)) true f.f_arg lt' in
 	  if b then 
             {texp = TCall(f,l); texp_pos = n.exp_pos ; texp_type = f.f_type }
 	  else raise (Argtype_error 
@@ -415,7 +415,7 @@ let rec fileType env l =
                     then raise (Type_error 
                       (dv.decvar_pos, "variable '"^(snd dv.decvar)^
                         "' is declared void")) ;
-		    (snd dv.decvar,t)
+		    {lv_name = snd dv.decvar ; lv_type = t ; lv_loc = 0 })
 		  ) lvar 
 		  in		
 		new_stru.s_content <- l1 ;
@@ -426,10 +426,10 @@ let rec fileType env l =
                 tdectype_pos = dt.dectype_pos} 
                 in
 		List.iter 
-                  (fun (id,t) -> if (not (bien_forme env' t)) 
-                    || (equiv t (TStruct new_stru)) then
+                  (fun var -> if (not (bien_forme env' var.lv_type)) 
+                    || (equiv var.lv_type (TStruct new_stru)) then
 		      raise (Type_error 
-                        (dt.dectype_pos,"storage size of '"^id^
+                        (dt.dectype_pos,"storage size of '"^var.lv_name^
                           "' is unknown")) )
 		  new_stru.s_content ;
 		let env2,l2 = fileType env' (List.tl l) in 
@@ -452,7 +452,7 @@ let rec fileType env l =
                     then raise (Type_error 
                       (dv.decvar_pos, "variable '"^(snd dv.decvar)^
                         "' is declared void")) ;
-		    (snd dv.decvar,t)
+		    {lv_name = snd dv.decvar ; lv_type = t ; lv_loc = 0}
 		  ) lvar 
 		  in		
 		new_uni.u_content <- l1 ;
@@ -462,10 +462,10 @@ let rec fileType env l =
 		let env' = (SMap.add ("uni_"^id) (MUni new_uni) env)
 		and dv' = TDt {tdectype = TDunion new_uni ; 
                 tdectype_pos = dt.dectype_pos} in
-		List.iter (fun (id,t) -> if (not (bien_forme env' t)) || 
-                  (equiv t (TUnion new_uni)) then
+		List.iter (fun var -> if (not (bien_forme env' var.lv_type)) || 
+                  (equiv var.lv_type (TUnion new_uni)) then
 		  raise (Type_error 
-                    (dt.dectype_pos,"storage size of '"^(id)^"' is unknown")) )
+                    (dt.dectype_pos,"storage size of '"^var.lv_name^"' is unknown")) )
 		  new_uni.u_content ;
 		let env2,l2 = fileType env' (List.tl l) in 
 		env2,(dv'::l2)
@@ -491,7 +491,8 @@ let rec fileType env l =
 	  {f_name = id; 
 	  f_type = t' ; 
 	  f_arg = List.map 
-              (fun (t,x) -> (mtype_of_ttype env df.decfun_pos t,x)) lvar
+              (fun (t,x) -> {lv_name = x ; lv_loc = 0 ;
+				lv_type = mtype_of_ttype env df.decfun_pos t}) lvar
           }
 	in
 	let env' = SMap.add ("fun_"^id) (MFun new_fun) env in
@@ -513,9 +514,9 @@ let rec fileType env l =
 let typage p = 
   let sbrk = MFun {f_name = "sbrk" ; 
   f_type = TPointer (TVoid) ; 
-  f_arg = [TInt,"n"]}
+  f_arg = [{lv_type = TInt ;lv_loc = 0 ; lv_name ="n"}]}
   and putchar = MFun {f_name = "putchar" ; 
-  f_type = TInt ; f_arg = [TInt,"c"]} 
+  f_type = TInt ; f_arg = [{lv_type =TInt ; lv_name = "c"; lv_loc = 0}] }
   in 
   let env0 = SMap.add "fun_sbrk" sbrk (SMap.singleton "fun_putchar" putchar) in
   let env,l = (fileType env0 p.decl) in 
@@ -528,9 +529,10 @@ let typage p =
         then raise (Type_error (pos,"invalid type for function main")) ;
 	  begin 
 	    match f.f_arg with 
-	      | [] | [TInt,_ ; TPointer(TPointer(TChar)),_] -> () ;
+	      | [] -> ()
+	      | [arg1;arg2] when (arg1.lv_type = TInt) && (arg2.lv_type = TPointer(TPointer(TChar))) -> () ;
 	      | _ -> 
-		  let lt = List.map (fun (t,id) -> t) f.f_arg in 
+		  let lt = List.map (fun arg -> arg.lv_type) f.f_arg in 
 		  raise (Argtype_error (pos,"main",lt))
 	  end ;
       | MVar _ | MUni _ | MStr _ -> assert false

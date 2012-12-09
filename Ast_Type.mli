@@ -5,12 +5,12 @@ type gvar = {gv_name : ident ; gv_type : mtype}
 and lvar = {lv_name : ident ; mutable lv_loc : int ; lv_type : mtype}
 (*loc : localisation de la variable locale sur la pile, sera utilisé plus tard*)
 and var = TGvar of gvar | TLvar of lvar
-and func = {f_name : ident ; f_type : mtype ; f_arg : (mtype * ident) list}	
+and func = {f_name : ident ; f_type : mtype ; f_arg : lvar list}	
 and stru = {s_name : ident ; 
-   mutable s_content : (ident * mtype) list ;
+   mutable s_content : lvar list ;
    mutable s_size : int}
 and uni = {u_name : ident ; 
-   mutable u_content :(ident * mtype) list ;
+   mutable u_content :lvar list ;
    mutable u_size : int}
 and mtype = TVoid | TInt | TChar | TStruct of stru 
            | TUnion of uni | TPointer of mtype | TTypenull
