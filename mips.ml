@@ -1,6 +1,6 @@
 
 type register =
-  | ZERO | A0 | A1 | A2 | V0 | T0 | T1 | T2 | S0 | RA | SP | FP
+  | ZERO | A0 | A1 | A2 | A3 | V0 | V1 | T0 | T1 | T2 | T3 | T4 | S0 | S1 | S2 | S3 | S4 | RA | SP | FP 
 
 type address =
   | Alab of string
@@ -73,11 +73,19 @@ let print_register fmt = function
   | A0 -> pp_print_string fmt "$a0"
   | A1 -> pp_print_string fmt "$a1"
   | A2 -> pp_print_string fmt "$a2"
+  | A3 -> pp_print_string fmt "$a3"
   | V0 -> pp_print_string fmt "$v0"
+  | V1 -> pp_print_string fmt "$v1"
   | T0 -> pp_print_string fmt "$t0"
   | T1 -> pp_print_string fmt "$t1"
   | T2 -> pp_print_string fmt "$t2"
+  | T3 -> pp_print_string fmt "$t3"
+  | T4 -> pp_print_string fmt "$t4"
   | S0 -> pp_print_string fmt "$s0"
+  | S1 -> pp_print_string fmt "$s1"
+  | S2 -> pp_print_string fmt "$s2"
+  | S3 -> pp_print_string fmt "$s3"
+  | S4 -> pp_print_string fmt "$s4"
   | RA -> pp_print_string fmt "$ra"
   | SP -> pp_print_string fmt "$sp"
   | FP -> pp_print_string fmt "$fp"
