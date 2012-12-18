@@ -492,7 +492,8 @@ let rec fileType env l =
 	  f_type = t' ; 
 	  f_arg = List.map 
               (fun (t,x) -> {lv_name = x ; lv_loc = 0 ;
-				lv_type = mtype_of_ttype env df.decfun_pos t}) lvar
+				lv_type = mtype_of_ttype env df.decfun_pos t}) lvar ;
+	  f_lvar_size = 0 
           }
 	in
 	let env' = SMap.add ("fun_"^id) (MFun new_fun) env in
@@ -514,9 +515,10 @@ let rec fileType env l =
 let typage p = 
   let sbrk = MFun {f_name = "sbrk" ; 
   f_type = TPointer (TVoid) ; 
-  f_arg = [{lv_type = TInt ;lv_loc = 0 ; lv_name ="n"}]}
+  f_arg = [{lv_type = TInt ;lv_loc = 0 ; lv_name ="n"}] ;
+  f_lvar_size = 0}
   and putchar = MFun {f_name = "putchar" ; 
-  f_type = TInt ; f_arg = [{lv_type =TInt ; lv_name = "c"; lv_loc = 0}] }
+  f_type = TInt ; f_arg = [{lv_type =TInt ; lv_name = "c"; lv_loc = 0}] ;f_lvar_size = 0 }
   in 
   let env0 = SMap.add "fun_sbrk" sbrk (SMap.singleton "fun_putchar" putchar) in
   let env,l = (fileType env0 p.decl) in 

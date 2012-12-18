@@ -1,4 +1,4 @@
-CMO=lexer.cmo parser.cmo Definition.cmo typeur.cmo main.cmo 
+CMO=lexer.cmo parser.cmo Definition.cmo typeur.cmo prod_code.cmo main.cmo 
 GENERATED = lexer.ml parser.ml parser.mli 
 BIN=minic
 FLAGS=
