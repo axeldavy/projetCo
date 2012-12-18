@@ -185,7 +185,7 @@ let rec exprType env n =  match n.exp with
 		try
 	          { texp = TAccess_field(e',x); 
                   texp_pos = n.exp_pos ; 
-                  texp_type = snd (List.find (fun var -> var.lv_name = x) u.u_content)};
+                  texp_type = (List.find (fun var -> var.lv_name = x) u.u_content).lv_type};
 		with Not_found -> raise (Type_error 
                   (n.exp_pos,"l'identificateur " ^x^ "n'apparait pas dans " ^ 
                     "uni " ^ u.u_name ))
@@ -197,7 +197,7 @@ let rec exprType env n =  match n.exp with
 		try
 		  { texp = TAccess_field(e',x); 
                   texp_pos = n.exp_pos ; 
-                  texp_type = snd (List.find (fun var -> var.lv_name = x) s.s_content)};
+                  texp_type = (List.find (fun var -> var.lv_name = x) s.s_content).lv_type};
 		with Not_found -> raise (Type_error 
                   (n.exp_pos,"l'identificateur " ^x^ "n'apparait pas dans " ^ 
                     "str " ^ s.s_name ))
@@ -415,8 +415,7 @@ let rec fileType env l =
                     then raise (Type_error 
                       (dv.decvar_pos, "variable '"^(snd dv.decvar)^
                         "' is declared void")) ;
-		    {lv_name = snd dv.decvar ; lv_type = t ; lv_loc = 0 })
-		  ) lvar 
+		    {lv_name = snd dv.decvar ; lv_type = t ; lv_loc = 0 }) lvar 
 		  in		
 		new_stru.s_content <- l1 ;
                 if(SMap.mem ("str_"^id) env) || (SMap.mem ("uni_"^id) env)
@@ -493,7 +492,8 @@ let rec fileType env l =
 	  f_arg = List.map 
               (fun (t,x) -> {lv_name = x ; lv_loc = 0 ;
 				lv_type = mtype_of_ttype env df.decfun_pos t}) lvar ;
-	  f_lvar_size = 0 
+	  f_lvar_size = 0 ;
+	  f_result_pos = 0 
           }
 	in
 	let env' = SMap.add ("fun_"^id) (MFun new_fun) env in
@@ -516,9 +516,13 @@ let typage p =
   let sbrk = MFun {f_name = "sbrk" ; 
   f_type = TPointer (TVoid) ; 
   f_arg = [{lv_type = TInt ;lv_loc = 0 ; lv_name ="n"}] ;
-  f_lvar_size = 0}
+  f_lvar_size = 0 ;
+  f_result_pos = 0 }
   and putchar = MFun {f_name = "putchar" ; 
-  f_type = TInt ; f_arg = [{lv_type =TInt ; lv_name = "c"; lv_loc = 0}] ;f_lvar_size = 0 }
+  f_type = TInt ; 
+  f_arg = [{lv_type =TInt ; lv_name = "c"; lv_loc = 0}] ;
+  f_lvar_size = 0 ;
+  f_result_pos = 0 ; }
   in 
   let env0 = SMap.add "fun_sbrk" sbrk (SMap.singleton "fun_putchar" putchar) in
   let env,l = (fileType env0 p.decl) in 

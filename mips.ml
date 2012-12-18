@@ -66,7 +66,6 @@ type program = {
 }
 
 open Format
-open Lib
 
 let print_register fmt = function
   | ZERO -> pp_print_string fmt "$0"
@@ -170,11 +169,16 @@ let print_word fmt = function
   | Wint n -> pp_print_int fmt n
   | Waddr s -> pp_print_string fmt s
 
+let rec print_list print fmt = function
+  | [] -> ()
+  | [x] -> print fmt x
+  | x :: r -> fprintf fmt "%a, %a" print x (print_list print) r
+
 let print_data fmt = function
   | Asciiz (l, s) ->
       fprintf fmt "%s:\n\t.asciiz %S\n" l s
   | Word (l, n) ->
-      fprintf fmt "%s:\n\t.word %a\n" l (print_list comma print_word) n
+      fprintf fmt "%s:\n\t.word %a\n" l (print_list print_word) n
   | Space (l, n) ->
       fprintf fmt "%s:\n\t.space %d\n" l n
   | Align n ->
@@ -186,4 +190,5 @@ let print_program fmt p =
   fprintf fmt "\t.data\n";
   List.iter (print_data fmt) p.data;
   fprintf fmt "@."
+
 

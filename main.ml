@@ -41,7 +41,8 @@ let () =
     Arg.usage options usage;
     exit 1
   end;
-
+  ofile := (Filename.chop_suffix !ifile ".c") ^ ".s" ;
+  
   (* Ouverture du fichier source en lecture *)
   let f = open_in !ifile in
     
@@ -52,9 +53,14 @@ let () =
     let p = Parser.prog Lexer.token buf in
     close_in f;
     if !parse_only then (printf "Parsing de %s terminee@." !ifile; exit 0);
-    let _ = Typeur.typage p in ();
+    let p2 = Typeur.typage p in
     if !type_only then ( printf "Typage de %s terminee@." !ifile; exit 0);
-    exit 0 (* de toute façon on s'arrete au typage pour l'instant*)
+	
+	let file = open_out !ofile in 
+	let code = Prod_code.code_prog p2 in 
+	Mips.print_program (Format.formatter_of_out_channel file) code ;
+	close_out file ;
+	exit 0 
   with
     | Lexer.Lexing_error c -> 
 	(* Erreur lexicale. On récupère sa position absolue et 
