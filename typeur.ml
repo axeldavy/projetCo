@@ -271,7 +271,7 @@ let rec exprType env n =  match n.exp with
 	  if (ispointer t1)&&(equiv t1 t2)&&(op = BMinus)
 	  then TInt
           else
-            if (equiv t1 t2)&&(num t1) 
+            if (equiv t1 t2)&&(equiv t1 TInt) 
             then TInt
 	    else raise (Argtype_error (n.exp_pos,(string_of_binop op),[t1;t2]))
     in 
