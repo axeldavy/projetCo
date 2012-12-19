@@ -5,6 +5,7 @@ open Definition
 exception Type_error of position * string
 exception Argtype_error of position * string * (mtype list)
 
+val echaine : (string,string) Hashtbl.t
 
 
 module SMap : Map.S with type key = string

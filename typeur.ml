@@ -123,7 +123,8 @@ globales ou locales*)
 	else raise (Type_error 
           (dv.decvar_pos, "variable '"^(id)^"' declared void" ))
 	  
-
+let (echaine :(string,string) Hashtbl.t) = Hashtbl.create 17  
+let num_chaine = ref 0
 
 (*fonction pour typer les expressions*)
 let rec exprType env n =  match n.exp with
@@ -132,7 +133,10 @@ let rec exprType env n =  match n.exp with
       
   | Entier i -> {texp = TEntier i ; texp_pos = n.exp_pos ; texp_type = TInt}
       
-  | Chaine s -> 
+  | Chaine s -> Hashtbl.replace echaine s ("str_"^(string_of_int !num_chaine)); 
+		num_chaine := !num_chaine +1; 
+(* rq: si une chaine est utilisée plusieurs fois, il y aura des trous dans le compte les str_i,
+mais la chaine ne sera bien déclarée qu'une seule fois *) 
       {texp = TChaine s; texp_pos = n.exp_pos ; texp_type = TPointer(TChar)}
       
   | Character c -> 
