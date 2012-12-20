@@ -27,6 +27,7 @@ type instruction =
   | Sb of register * address
   | Arith of arith * register * register * operand
   | Neg of register * register
+  | Not of register * register (* pseudo-instruction *)
   | Set of condition * register * register * operand
   | B of label
   | Beq of register * register * label

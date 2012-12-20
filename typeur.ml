@@ -501,10 +501,9 @@ let rec fileType env l =
           }
 	in
 	let env' = SMap.add ("fun_"^id) (MFun new_fun) env in
-	let env_f = List.fold_left (fun e (t,x) -> SMap.add ("var_"^x) 
-	  (MVar (TLvar {lv_name = id ; lv_loc = 0 ; 
-          lv_type = mtype_of_ttype env df.decfun_pos t})) e) 
-	  env' lvar in
+	let env_f = List.fold_left (fun e var -> SMap.add ("var_"^var.lv_name) 
+	  (MVar (TLvar var)) e) 
+	  env' new_fun.f_arg in
 	let new_b = match (instrType env_f t' 
           {instr = Bloc b ; instr_pos = b.bloc_pos}).tinstr with 
 	  | TBloc b -> b

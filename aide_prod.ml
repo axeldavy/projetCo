@@ -92,7 +92,7 @@ let rec set_loc_instr pos = function
 			in
 			let size_o = size_octet var.lv_type in 
 			let new_pos = assert (size_up_to_date var.lv_type) ;
-				pos - 4* size_o 
+				acc - 4* size_o 
 			in 
 			var.lv_loc <- new_pos ;
 			new_pos 
@@ -100,7 +100,7 @@ let rec set_loc_instr pos = function
 		List.fold_left aux pos (fst b.tbloc) 
 	
 	
-	
+	(* rq: les locations sont données dans le sens droite à gauche au lieu de gauche à droite... pas trop grave? *)
 	
 		
 let set_loc p = 
@@ -109,11 +109,11 @@ let set_loc p =
 		| TDf df -> let posf = set_loc_instr (-4) (TBloc df.tcontent) in 
 				df.tfun.f_lvar_size <- 4 + (abs posf) ;
 			(*on suppose que tous les arguments de la fonction sont alignés sur la pile !!! (plus simple)*)
-				let res_pos = List.fold_left (fun pos_libre var -> var.lv_loc <- pos_libre ; 
+				let res_pos = List.fold_right (fun var pos_libre -> var.lv_loc <- pos_libre ; 
 					assert (size_up_to_date var.lv_type) ;
 					let size_o = size_octet var.lv_type in 
 					pos_libre + 4*size_o 
-					) 4 df.tfun.f_arg
+					) df.tfun.f_arg 4
 			(*la première position libre pour un argument est en +4 (par rapport à $fp)*)
 				in df.tfun.f_result_pos <- res_pos 
 	in 
@@ -121,7 +121,11 @@ let set_loc p =
 	List.iter aux p.tdecl
 
 let func_begin frame_size =
-  mips[Sw(FP, Areg(-4,SP)); Arith (Sub ,FP, SP, Oimm (4));  Sw(RA, Areg(-4,FP)); Arith(Sub, SP,FP,Oimm(frame_size))]
+  mips[Sw(FP, Areg(-4,SP)); Arith (Sub ,FP, SP, Oimm (4));  Sw(RA, Areg(-4,FP)); Arith(Sub, SP,FP,Oimm(frame_size-4))]
 
 let func_end ()=
   mips[Arith(Add,SP,FP,Oimm(4));Lw(RA,Areg(-4,FP));Lw(FP,Areg(0,FP)); Jr( RA) ]
+
+
+
+
