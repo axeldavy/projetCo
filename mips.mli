@@ -26,6 +26,8 @@ type instruction =
   | Lb of register * address
   | Sb of register * address
   | Arith of arith * register * register * operand
+  | And of register * register * operand
+  | Or of register * register * operand
   | Neg of register * register
   | Not of register * register (* pseudo-instruction *)
   | Set of condition * register * register * operand

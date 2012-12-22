@@ -126,6 +126,23 @@ let func_begin frame_size =
 let func_end ()=
   mips[Arith(Add,SP,FP,Oimm(4));Lw(RA,Areg(-4,FP));Lw(FP,Areg(0,FP)); Jr( RA) ]
 
+(* hypothèse : les deux variables sont dans t0 et t1 et de types type1, type2*)
 
+let prep_binop type1 type2 =
+  match (type1,type2) with
+  | ( TInt , TInt) | (TInt,TChar) | (TChar,TInt) |( TChar,TChar)
+       -> nop (* rien à faire *)
 
+  | ( TPointer _ , TInt) | (TPointer _,TChar) 
+      -> mips[Arith(Mul,T1,T1,Oimm(4))] (* rq: un code optimisé devrait faire un décalage *)
 
+  | (TChar,TPointer _) |( TChar,TPointer _)
+      -> mips[Arith(Mul,T0,T0,Oimm(4))]
+
+  | _ -> assert false
+
+let last_number_label = ref(0)
+
+let give_label_name () =
+  last_number_label:= !last_number_label +1;
+  !last_number_label

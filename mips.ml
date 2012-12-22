@@ -26,6 +26,8 @@ type instruction =
   | Lb of register * address
   | Sb of register * address
   | Arith of arith * register * register * operand
+  | And of register * register * operand
+  | Or of register * register * operand
   | Neg of register * register
   | Not of register * register
   | Set of condition * register * register * operand
@@ -133,6 +135,10 @@ let print_instruction fmt = function
   | Arith (a, dst, src, op) ->
       fprintf fmt "\t%a  %a, %a, %a\n"
 	print_arith a print_register dst print_register src print_operand op
+  | And (dst, src, op) ->
+      fprintf fmt "\tand  %a, %a, %a\n" print_register dst print_register src print_operand op
+  | Or (dst, src, op) ->
+      fprintf fmt "\tor  %a, %a, %a\n" print_register dst print_register src print_operand op
   | Neg (dst, src) ->
       fprintf fmt "\tneg  %a, %a\n" print_register dst print_register src
   | Not (dst, src) ->

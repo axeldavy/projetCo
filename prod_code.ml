@@ -12,7 +12,7 @@ let move adr_depart adr_arrivee size = failwith "TODO"
 	
 let rec lvalue_code e = match e.texp with
   |TCharacter _ |TEntier _ |TChaine _ |TAssignement _ |TCall _ -> assert false
-  |TUnop _ |TBinop _ |TSizeof _ -> assert false
+  |TUnop _ |TBinop _ |TSizeof _ -> failwith "TODO!"(*assert false  euh, je pense que au contraire c'est bien une valeur à gauche pour binop dans certains cas*)
   |TVariable var -> begin match var with 
 	| TGvar v -> mips [La(A0,"var_"^v.gv_name)]
 	| TLvar v -> mips [Arith(Add,A0,FP,Oimm(v.lv_loc))] 
@@ -81,7 +81,65 @@ match e.texp with
 			| UPlus  -> code_interne 
 
 			) 
-  |TBinop (op,e1,e2) -> failwith "TODO"
+  |TBinop (op,e1,e2) -> let code_1 = code_expr e1 and code_2 = code_expr e2 in
+			let code_debut = code_1 ++ (mips[Move(T0,A0)]) ++ code_2 ++ (mips[Move(T1,A0)]) in
+                        let type1 = (* Marc: soit il faut rajouter un champ que tu remplis lors du typage, soit autre chose *) ? and type2 = ? in
+(* type1 et type2 sont le type de e1 et e2. J'hésite à rappeler le typeur sur e1 et e2 car il risque d'écraser des trucs. *)
+			let code_debut_2 = ref(nop) in  (* ne sert pas pour les comparaisons *)
+			let code_suite = 
+			  (match op with
+			  | Eq | Neq | Lt | Leq | Gt | Geq ->
+			      ( (* cas des comparaisons *)
+			         (* Méthode dégeux pour les branchements:
+		                    Saut de la comparaison
+		                     A0 <- 0 jump L3
+		                     L2 : A0<- 1
+		                     L3 :
+		                    C'est dégeux car on va ensuite (selon tout vraissemblance) faire un nouveau saut en testant si A0 est nul ou non 
+			       	let label1 = give_label_name () and label2 = give_label_name ()  in
+				match op with
+			       | Eq -> mips[Beq(T0,T1,label1); Li(A0,0);Label("label_"^(int_of_string(label1));
+			             Li(A0,1);Label("label_"^(int_of_string(label2))]
+			       | Neq -> mips[Bne(T0,T1,label1); Li(A0,0);Label("label_"^(int_of_string(label1));
+			             Li(A0,1);Label("label_"^(int_of_string(label2))]
+			       | Lt -> mips[Arith(Sub,A0,T0,Oreg (T1)); Bltz(T0,T1,label1); Li(A0,0);Label("label_"^(int_of_string(label1));
+			             Li(A0,1);Label("label_"^(int_of_string(label2))]
+			       | Leq -> mips[Arith(Sub,A0,T0,Oreg (T1));Blez(T0,T1,label1); Li(A0,0);Label("label_"^(int_of_string(label1));
+			             Li(A0,1);Label("label_"^(int_of_string(label2))]
+			       | Gt -> mips[Arith(Sub,A0,T0,Oreg (T1));Bgtz(T0,T1,label1); Li(A0,0);Label("label_"^(int_of_string(label1));
+			             Li(A0,1);Label("label_"^(int_of_string(label2))]
+			       | Geq -> mips[Arith(Sub,A0,T0,Oreg (T1));Bgez(T0,T1,label1); Li(A0,0);Label("label_"^(int_of_string(label1));
+			             Li(A0,1);Label("label_"^(int_of_string(label2))]
+			       | _ -> assert false *)
+
+(* Version plus propre, mais revenant au même:  *)
+	                     match op with
+			       | Eq -> mips[Set(Mips.Eq,A0,T0,Oreg(T1))]
+			       | Neq -> mips[Set(Mips.Ne,A0,T0,Oreg(T1))]
+			       | Lt -> mips[Set(Mips.Lt,A0,T0,Oreg(T1))]
+			       | Leq -> mips[Set(Mips.Le,A0,T0,Oreg(T1))]
+			       | Gt -> mips[Set(Mips.Gt,A0,T0,Oreg(T1))]
+			       | Geq -> mips[Set(Mips.Ge,A0,T0,Oreg(T1))]
+			       | _ -> assert false
+
+			       )
+		          | BPlus | BMinus | Mul | Div | Mod | And | Or -> (
+			     code_debut_2:= prep_binop type1 type2;
+			      match op with
+                               | BPlus -> mips[Arith(Mips.Add,A0,T0,Oreg(T1))]
+			       | BMinus -> mips[Arith(Mips.Sub,A0,T0,Oreg(T1))]
+			       | Mul -> mips[Arith(Mips.Mul,A0,T0,Oreg(T1))]
+			       | Div -> mips[Arith(Mips.Div,A0,T0,Oreg(T1))]
+			       | Mod -> mips[Arith(Mips.Rem,A0,T0,Oreg(T1))]
+			       | And -> mips[And(A0,T0,Oreg(T1))]
+			       | Or -> mips[Or(A0,T0,Oreg(T1))]
+			       | _ -> assert false 
+			    )
+			) in
+			
+			code_debut ++ code_debut_2 ++ code_suite
+
+
   |TSizeof (t) -> mips[Li (A0,get_size (t))]
 	
 	
@@ -123,6 +181,5 @@ let code_main = mips[Label "main";Arith(Sub, FP,SP,Oimm(8));Arith(Sub, SP,SP,Oim
 
 let code_prog p = 
 	set_loc p ;
-(*manque certainement un bout du genre jump main et gestion des arguments du programme*)
 	{text = code_main ++ List.fold_left (fun acc_code decl -> (code_decl decl) ++ acc_code) nop p.tdecl ; 
 	data = code_data() @ List.fold_left (fun acc_data decl -> (code_data2 decl) @ acc_data ) [] p.tdecl}
