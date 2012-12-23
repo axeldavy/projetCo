@@ -69,12 +69,19 @@ match e.texp with
   |TCall (f,[e]) when f.f_name = "putchar"-> let c = code_expr e in c++ (mips [Li (V0, 11) ; Syscall ]) (* on suppose dans A0 *) 
   |TCall (f,[e]) when f.f_name = "sbrk"-> let c = code_expr e in c ++ (mips [Li (V0, 9); Syscall; Move(A0,V0)]) (* on suppose dans A0; à tester *) 
   |TCall (f,l) -> failwith "TODO"
-  |TUnop (op,e) ->   let code_interne = code_expr e in 
+  |TUnop (op,e) ->   let code_interne = code_expr e ++ (mips[Move(T0,A0)]) in let code_adr = lvalue_code e1 in
 			(match op with
-			| PPleft -> failwith "TODO"
-			| PPright -> failwith "TODO"
-			| MMleft -> failwith "TODO"
-			| MMright -> failwith "TODO"
+			| PPleft | PPright | MMleft | MMright ->
+			      ( let type1 = ? in
+				let code_debut2 = (prep_unop type1) in
+			        let code_fin = 
+				  (match op with
+			      | PPleft -> mips[Move(A0,T0)] ++ mips[Arith(Add,T0,T0,Oreg(T0))] ++ mips[Sw(T0,Areg(0,A0))]     
+			      | PPright -> mips[Arith(Add,T0,T0,Oimm(1))] ++ mips[Sw(T0,Areg(0,A0))] ++ mips[Move(A0,T0)]
+			      | MMleft -> mips[Move(A0,T0)] ++ mips[Arith(Sub,T0,T0,Oreg(T0))] ++ mips[Sw(T0,Areg(0,A0))]
+			      | MMright -> mips[Arith(Sub,T0,T0,Oimm(1))] ++ mips[Sw(T0,Areg(0,A0))] ++ mips[Move(A0,T0)])
+				   in code_interne ++ code_adr ++ code_debut2 ++ code_fin
+			      )
 			| Adr_get -> lvalue_code e
 			| Definition.Not    -> code_interne ++ (mips[Mips.Not(A0,A0)])
 			| UMinus -> code_interne ++ (mips[Neg(A0,A0)])

@@ -141,6 +141,16 @@ let prep_binop type1 type2 =
 
   | _ -> assert false
 
+let prep_binop type1 type2 =
+  match (type1,type2) with
+  | ( TInt) | (TChar)
+       -> nop (* rien à faire *)
+
+  | ( TPointer _ ) 
+      -> mips[Arith(Mul,A0,A0,Oimm(4))] (* rq: un code optimisé devrait faire un décalage *)
+
+  | _ -> assert false
+
 let last_number_label = ref(0)
 
 let give_label_name () =
