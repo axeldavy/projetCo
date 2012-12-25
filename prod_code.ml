@@ -69,17 +69,18 @@ match e.texp with
   |TCall (f,[e]) when f.f_name = "putchar"-> let c = code_expr e in c++ (mips [Li (V0, 11) ; Syscall ]) (* on suppose dans A0 *) 
   |TCall (f,[e]) when f.f_name = "sbrk"-> let c = code_expr e in c ++ (mips [Li (V0, 9); Syscall; Move(A0,V0)]) (* on suppose dans A0; à tester *) 
   |TCall (f,l) -> failwith "TODO"
-  |TUnop (op,e) ->   let code_interne = code_expr e ++ (mips[Move(T0,A0)]) in let code_adr = lvalue_code e1 in
+  |TUnop (op,e) ->   let code_interne = code_expr e ++ (mips[Move(T0,A0)]) in let code_adr = lvalue_code e in
 			(match op with
 			| PPleft | PPright | MMleft | MMright ->
-			      ( let type1 = ? in
+			      ( let type1 = e.texp_type in
 				let code_debut2 = (prep_unop type1) in
 			        let code_fin = 
 				  (match op with
 			      | PPleft -> mips[Move(A0,T0)] ++ mips[Arith(Add,T0,T0,Oreg(T0))] ++ mips[Sw(T0,Areg(0,A0))]     
 			      | PPright -> mips[Arith(Add,T0,T0,Oimm(1))] ++ mips[Sw(T0,Areg(0,A0))] ++ mips[Move(A0,T0)]
 			      | MMleft -> mips[Move(A0,T0)] ++ mips[Arith(Sub,T0,T0,Oreg(T0))] ++ mips[Sw(T0,Areg(0,A0))]
-			      | MMright -> mips[Arith(Sub,T0,T0,Oimm(1))] ++ mips[Sw(T0,Areg(0,A0))] ++ mips[Move(A0,T0)])
+			      | MMright -> mips[Arith(Sub,T0,T0,Oimm(1))] ++ mips[Sw(T0,Areg(0,A0))] ++ mips[Move(A0,T0)]
+			      |_ -> assert false)
 				   in code_interne ++ code_adr ++ code_debut2 ++ code_fin
 			      )
 			| Adr_get -> lvalue_code e
@@ -90,8 +91,7 @@ match e.texp with
 			) 
   |TBinop (op,e1,e2) -> let code_1 = code_expr e1 and code_2 = code_expr e2 in
 			let code_debut = code_1 ++ (mips[Move(T0,A0)]) ++ code_2 ++ (mips[Move(T1,A0)]) in
-                        let type1 = (* Marc: soit il faut rajouter un champ que tu remplis lors du typage, soit autre chose *) ? and type2 = ? in
-(* type1 et type2 sont le type de e1 et e2. J'hésite à rappeler le typeur sur e1 et e2 car il risque d'écraser des trucs. *)
+                        let type1 = e1.texp_type and type2 = e2.texp_type in
 			let code_debut_2 = ref(nop) in  (* ne sert pas pour les comparaisons *)
 			let code_suite = 
 			  (match op with
@@ -138,13 +138,13 @@ match e.texp with
 			       | Mul -> mips[Arith(Mips.Mul,A0,T0,Oreg(T1))]
 			       | Div -> mips[Arith(Mips.Div,A0,T0,Oreg(T1))]
 			       | Mod -> mips[Arith(Mips.Rem,A0,T0,Oreg(T1))]
-			       | And -> mips[And(A0,T0,Oreg(T1))]
-			       | Or -> mips[Or(A0,T0,Oreg(T1))]
+			       | And -> mips[Mips.And(A0,T0,Oreg(T1))]
+			       | Or -> mips[Mips.Or(A0,T0,Oreg(T1))]
 			       | _ -> assert false 
 			    )
 			) in
 			
-			code_debut ++ code_debut_2 ++ code_suite
+			code_debut ++ !code_debut_2 ++ code_suite
 
 
   |TSizeof (t) -> mips[Li (A0,get_size (t))]

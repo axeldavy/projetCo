@@ -134,20 +134,20 @@ let prep_binop type1 type2 =
        -> nop (* rien à faire *)
 
   | ( TPointer _ , TInt) | (TPointer _,TChar) 
-      -> mips[Arith(Mul,T1,T1,Oimm(4))] (* rq: un code optimisé devrait faire un décalage *)
+      -> mips[Arith(Mips.Mul,T1,T1,Oimm(4))] (* rq: un code optimisé devrait faire un décalage *)
 
-  | (TChar,TPointer _) |( TChar,TPointer _)
-      -> mips[Arith(Mul,T0,T0,Oimm(4))]
+  | (TChar,TPointer _) |( TInt,TPointer _)
+      -> mips[Arith(Mips.Mul,T0,T0,Oimm(4))]
 
   | _ -> assert false
 
-let prep_binop type1 type2 =
-  match (type1,type2) with
+let prep_unop type1 =
+  match (type1) with
   | ( TInt) | (TChar)
        -> nop (* rien à faire *)
 
   | ( TPointer _ ) 
-      -> mips[Arith(Mul,A0,A0,Oimm(4))] (* rq: un code optimisé devrait faire un décalage *)
+      -> mips[Arith(Mips.Mul,A0,A0,Oimm(4))] (* rq: un code optimisé devrait faire un décalage *)
 
   | _ -> assert false
 
