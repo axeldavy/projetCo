@@ -69,11 +69,12 @@ match e.texp with
   |TCall (f,[e]) when f.f_name = "putchar"-> let c = code_expr e in c++ (mips [Li (V0, 11) ; Syscall ]) (* on suppose dans A0 *) 
   |TCall (f,[e]) when f.f_name = "sbrk"-> let c = code_expr e in c ++ (mips [Li (V0, 9); Syscall; Move(A0,V0)]) (* on suppose dans A0; à tester *) 
   |TCall (f,l) -> failwith "TODO"
-  |TUnop (op,e) ->   let code_interne = code_expr e ++ (mips[Move(T0,A0)]) in let code_adr = lvalue_code e in
+  |TUnop (op,e) ->   let code_interne = code_expr e ++ (mips[Move(T0,A0)]) in 
 			(match op with
 			| PPleft | PPright | MMleft | MMright ->
 			      ( let type1 = e.texp_type in
 				let code_debut2 = (prep_unop type1) in
+				let code_adr = lvalue_code e in
 			        let code_fin = 
 				  (match op with
 			      | PPleft -> mips[Move(A0,T0)] ++ mips[Arith(Add,T0,T0,Oreg(T0))] ++ mips[Sw(T0,Areg(0,A0))]     
@@ -89,8 +90,10 @@ match e.texp with
 			| UPlus  -> code_interne 
 
 			) 
-  |TBinop (op,e1,e2) -> let code_1 = code_expr e1 and code_2 = code_expr e2 in
-			let code_debut = code_1 ++ (mips[Move(T0,A0)]) ++ code_2 ++ (mips[Move(T1,A0)]) in
+  |TBinop (op,e1,e2) -> let code_1 = code_expr e1 and code_2 = code_expr e2 in (* on doit sauvegarder T0 car code_2 peut l'utiliser *)
+			let save_t0 = mips[Arith(Add,SP,SP,Oimm(4));Sw(T0,Areg(0,SP))] in
+			let free_stack = mips[Lw(T0,Areg(0,SP));Arith(Sub,SP,SP,Oimm(4))] in
+			let code_debut = code_1 ++ (mips[Move(T0,A0)]) ++ save_t0 ++ code_2 ++ (mips[Move(T1,A0)]) ++ free_stack in
                         let type1 = e1.texp_type and type2 = e2.texp_type in
 			let code_debut_2 = ref(nop) in  (* ne sert pas pour les comparaisons *)
 			let code_suite = 
