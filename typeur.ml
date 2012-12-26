@@ -76,6 +76,7 @@ let string_of_mtype t= string_of_type (ttype_of_mtype t)
 let compop = function 
   | Eq | Neq | Lt | Gt | Leq | Geq -> true
   | BPlus | BMinus | Mul | Div | Mod | Or | And -> false
+  | PointerBPlus | PointerPointerBMinus | PointerIntBMinus -> assert false
       
 let ispointer = function 
   | TTypenull | TPointer _ -> true
@@ -228,11 +229,23 @@ mais la chaine ne sera bien déclarée qu'une seule fois *)
         (n.exp_pos,"lvalue required as left operand of assignment" ))
         
   | Unop(op,e) when (op=PPleft)||(op=PPright)||(op=MMleft)||(op = MMright) ->
+  (*onfait appel à cette fonction suivant que l'expression sur laquelle on 
+  appelle ces opérateurs est un pointeur ou non*)
+	  let aux = function 
+		| PPleft -> PointerPPleft
+		| PPright -> PointerPPright 
+		| MMleft -> PointerMMright 
+		| MMright -> PointerMMright 
+		| _ -> assert false
+	in 
       let e' = exprType env e in 
       if lvalue e'.texp then
 	let t = e'.texp_type in
 	if num t then 
-          {texp = TUnop(op, e'); texp_pos = n.exp_pos ; texp_type = t}
+		if ispointer t then 
+          {texp = TUnop(aux op, e'); texp_pos = n.exp_pos ; texp_type = t}
+		else 
+		  {texp = TUnop(aux op, e'); texp_pos = n.exp_pos ; texp_type = t}
 	else raise (Argtype_error (n.exp_pos,(string_of_unop op),[t]))
       else raise (Type_error 
         (n.exp_pos,"lvalue required as left operand of assignment" ))
@@ -264,22 +277,21 @@ mais la chaine ne sera bien déclarée qu'une seule fois *)
         raise (Argtype_error (n.exp_pos,(string_of_binop op),[t1;t2]))
         
   | Binop(op,e1,e2) -> let e1' = exprType env e1 and e2' = exprType env e2 in
+  (*adapté pour renvoyer un opérateur différent suivant que les expressions sont des pointeurs ou non*)
     let t1 = e1'.texp_type and t2 = e2'.texp_type in
-    let t =
-      if (ispointer t1)&&(equiv t2 TInt)&&((op = BPlus)||(op = BMinus))
-      then t1
-      else
-	if (ispointer t2)&&(equiv t1 TInt)&&(op = BPlus)
-	then t2
-	else
-	  if (ispointer t1)&&(equiv t1 t2)&&(op = BMinus)
-	  then TInt
-          else
-            if (equiv t1 t2)&&(equiv t1 TInt) 
-            then TInt
-	    else raise (Argtype_error (n.exp_pos,(string_of_binop op),[t1;t2]))
-    in 
-    {texp = TBinop(op,e1',e2') ; texp_pos = n.exp_pos; texp_type = t}
+    if (ispointer t1)&&(equiv t2 TInt)&&((op = BPlus)||(op = BMinus))
+    then let new_op = if op = BPlus then PointerBPlus else PointerIntBMinus in
+		{texp = TBinop(new_op,e1',e2') ; texp_pos = n.exp_pos; texp_type = t1}
+    else
+	  if (ispointer t2)&&(equiv t1 TInt)&&(op = BPlus)
+	  then {texp = TBinop(PointerIntBMinus,e1',e2') ; texp_pos = n.exp_pos; texp_type = t2}
+	  else
+	    if (ispointer t1)&&(equiv t1 t2)&&(op = BMinus)
+	    then {texp = TBinop(PointerPointerBMinus,e1',e2') ; texp_pos = n.exp_pos; texp_type = TInt}
+        else
+          if (equiv t1 t2)&&(equiv t1 TInt) 
+          then {texp = TBinop(op,e1',e2') ; texp_pos = n.exp_pos; texp_type = TInt}
+	      else raise (Argtype_error (n.exp_pos,(string_of_binop op),[t1;t2]))
 	
   | Call(id,l) -> begin try
       match SMap.find ("fun_"^id) env with

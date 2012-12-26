@@ -69,86 +69,64 @@ match e.texp with
   |TCall (f,[e]) when f.f_name = "putchar"-> let c = code_expr e in c++ (mips [Li (V0, 11) ; Syscall ]) (* on suppose dans A0 *) 
   |TCall (f,[e]) when f.f_name = "sbrk"-> let c = code_expr e in c ++ (mips [Li (V0, 9); Syscall; Move(A0,V0)]) (* on suppose dans A0; à tester *) 
   |TCall (f,l) -> failwith "TODO"
-  |TUnop (op,e) ->   let code_interne = code_expr e ++ (mips[Move(T0,A0)]) in 
-			(match op with
-			| PPleft | PPright | MMleft | MMright ->
-			      ( let type1 = e.texp_type in
-				let code_debut2 = (prep_unop type1) in
-				let code_adr = lvalue_code e in
-			        let code_fin = 
-				  (match op with
-			      | PPleft -> mips[Move(A0,T0)] ++ mips[Arith(Add,T0,T0,Oreg(T0))] ++ mips[Sw(T0,Areg(0,A0))]     
-			      | PPright -> mips[Arith(Add,T0,T0,Oimm(1))] ++ mips[Sw(T0,Areg(0,A0))] ++ mips[Move(A0,T0)]
-			      | MMleft -> mips[Move(A0,T0)] ++ mips[Arith(Sub,T0,T0,Oreg(T0))] ++ mips[Sw(T0,Areg(0,A0))]
-			      | MMright -> mips[Arith(Sub,T0,T0,Oimm(1))] ++ mips[Sw(T0,Areg(0,A0))] ++ mips[Move(A0,T0)]
-			      |_ -> assert false)
-				   in code_interne ++ code_adr ++ code_debut2 ++ code_fin
-			      )
+  |TUnop (op,e) -> 
+			begin match op with
+			| PPleft -> let code_adr = lvalue_code e in
+				code_adr ++ (mips[Lw(T0,Areg(0,A0)) ; Arith(Add,T0,T0,Oimm(1)) ; Sw(T0,Areg(0,A0)) ; Move(A0,T0)]) 
+			| PPright -> let code_adr = lvalue_code e in
+				code_adr ++ (mips[Lw(T0,Areg(0,A0)) ; Arith(Add,T0,T0,Oimm(1)) ; Sw(T0,Areg(0,A0)) ; Arith(Add,A0,T0,Oimm(-1))]) 
+			| MMleft -> let code_adr = lvalue_code e in
+				code_adr ++ (mips[Lw(T0,Areg(0,A0)) ; Arith(Add,T0,T0,Oimm(-1)) ; Sw(T0,Areg(0,A0)) ; Move(A0,T0)]) 
+			| MMright -> let code_adr = lvalue_code e in
+				code_adr ++ (mips[Lw(T0,Areg(0,A0)) ; Arith(Add,T0,T0,Oimm(-1)) ; Sw(T0,Areg(0,A0)) ; Arith(Add,A0,T0,Oimm(1))]) 
 			| Adr_get -> lvalue_code e
-			| Definition.Not    -> code_interne ++ (mips[Mips.Not(A0,A0)])
-			| UMinus -> code_interne ++ (mips[Neg(A0,A0)])
-			| UPlus  -> code_interne 
-
-			) 
-  |TBinop (op,e1,e2) -> let code_1 = code_expr e1 and code_2 = code_expr e2 in (* on doit sauvegarder T0 car code_2 peut l'utiliser *)
-			let save_t0 = mips[Arith(Add,SP,SP,Oimm(4));Sw(T0,Areg(0,SP))] in
-			let free_stack = mips[Lw(T0,Areg(0,SP));Arith(Sub,SP,SP,Oimm(4))] in
-			let code_debut = code_1 ++ (mips[Move(T0,A0)]) ++ save_t0 ++ code_2 ++ (mips[Move(T1,A0)]) ++ free_stack in
-                        let type1 = e1.texp_type and type2 = e2.texp_type in
-			let code_debut_2 = ref(nop) in  (* ne sert pas pour les comparaisons *)
-			let code_suite = 
-			  (match op with
-			  | Eq | Neq | Lt | Leq | Gt | Geq ->
-			      ( (* cas des comparaisons *)
-			         (* Méthode dégeux pour les branchements:
-		                    Saut de la comparaison
-		                     A0 <- 0 jump L3
-		                     L2 : A0<- 1
-		                     L3 :
-		                    C'est dégeux car on va ensuite (selon tout vraissemblance) faire un nouveau saut en testant si A0 est nul ou non 
-			       	let label1 = give_label_name () and label2 = give_label_name ()  in
-				match op with
-			       | Eq -> mips[Beq(T0,T1,label1); Li(A0,0);Label("label_"^(int_of_string(label1));
-			             Li(A0,1);Label("label_"^(int_of_string(label2))]
-			       | Neq -> mips[Bne(T0,T1,label1); Li(A0,0);Label("label_"^(int_of_string(label1));
-			             Li(A0,1);Label("label_"^(int_of_string(label2))]
-			       | Lt -> mips[Arith(Sub,A0,T0,Oreg (T1)); Bltz(T0,T1,label1); Li(A0,0);Label("label_"^(int_of_string(label1));
-			             Li(A0,1);Label("label_"^(int_of_string(label2))]
-			       | Leq -> mips[Arith(Sub,A0,T0,Oreg (T1));Blez(T0,T1,label1); Li(A0,0);Label("label_"^(int_of_string(label1));
-			             Li(A0,1);Label("label_"^(int_of_string(label2))]
-			       | Gt -> mips[Arith(Sub,A0,T0,Oreg (T1));Bgtz(T0,T1,label1); Li(A0,0);Label("label_"^(int_of_string(label1));
-			             Li(A0,1);Label("label_"^(int_of_string(label2))]
-			       | Geq -> mips[Arith(Sub,A0,T0,Oreg (T1));Bgez(T0,T1,label1); Li(A0,0);Label("label_"^(int_of_string(label1));
-			             Li(A0,1);Label("label_"^(int_of_string(label2))]
-			       | _ -> assert false *)
-
-(* Version plus propre, mais revenant au même:  *)
-	                     match op with
-			       | Eq -> mips[Set(Mips.Eq,A0,T0,Oreg(T1))]
-			       | Neq -> mips[Set(Mips.Ne,A0,T0,Oreg(T1))]
-			       | Lt -> mips[Set(Mips.Lt,A0,T0,Oreg(T1))]
-			       | Leq -> mips[Set(Mips.Le,A0,T0,Oreg(T1))]
-			       | Gt -> mips[Set(Mips.Gt,A0,T0,Oreg(T1))]
-			       | Geq -> mips[Set(Mips.Ge,A0,T0,Oreg(T1))]
-			       | _ -> assert false
-
-			       )
-		          | BPlus | BMinus | Mul | Div | Mod | And | Or -> (
-			     code_debut_2:= prep_binop type1 type2;
-			      match op with
-                               | BPlus -> mips[Arith(Mips.Add,A0,T0,Oreg(T1))]
-			       | BMinus -> mips[Arith(Mips.Sub,A0,T0,Oreg(T1))]
-			       | Mul -> mips[Arith(Mips.Mul,A0,T0,Oreg(T1))]
-			       | Div -> mips[Arith(Mips.Div,A0,T0,Oreg(T1))]
-			       | Mod -> mips[Arith(Mips.Rem,A0,T0,Oreg(T1))]
-			       | And -> mips[Mips.And(A0,T0,Oreg(T1))]
-			       | Or -> mips[Mips.Or(A0,T0,Oreg(T1))]
-			       | _ -> assert false 
-			    )
-			) in
+			| Definition.Not -> (code_expr e) ++ (mips[Mips.Not(A0,A0)])
+			| UMinus -> let code_e = code_expr e in 
+				code_e ++ (mips[Neg(A0,A0)])
+			| UPlus  -> code_expr e
 			
-			code_debut ++ !code_debut_2 ++ code_suite
-
+			| PointerPPleft -> let code_adr = lvalue_code e in
+							let taille = get_size (pointed_type e.texp_type) in (*t = taille du type pointé*)
+				code_adr ++ (mips[Lw(T0,Areg(0,A0)) ; Arith(Add,T0,T0,Oimm(taille)) ; Sw(T0,Areg(0,A0)) ; Move(A0,T0)]) 
+			| PointerPPright -> let code_adr = lvalue_code e in
+							let taille = get_size (pointed_type e.texp_type) in
+				code_adr ++ (mips[Lw(T0,Areg(0,A0)) ; Arith(Add,T0,T0,Oimm(taille)) ; Sw(T0,Areg(0,A0)) ; Arith(Add,A0,T0,Oimm(-taille))]) 
+			| PointerMMleft -> let code_adr = lvalue_code e in
+							let taille = get_size (pointed_type e.texp_type) in
+				code_adr ++ (mips[Lw(T0,Areg(0,A0)) ; Arith(Add,T0,T0,Oimm(-taille)) ; Sw(T0,Areg(0,A0)) ; Move(A0,T0)])
+			| PointerMMright -> let code_adr = lvalue_code e in
+							let taille = get_size (pointed_type e.texp_type) in
+				code_adr ++ (mips[Lw(T0,Areg(0,A0)) ; Arith(Add,T0,T0,Oimm(-taille)) ; Sw(T0,Areg(0,A0)) ; Arith(Add,A0,T0,Oimm(taille))])  
+			end
+			
+  |TBinop (op,e1,e2) -> begin let code_debut = (code_expr e1) 
+			++ (mips[Sw(A0,Areg(-4,SP)) ; Arith(Sub,SP,SP,Oimm(4))]) 
+			++ (code_expr e2) 
+			++ (mips[Lw(T0,Areg(0,SP)) ; Arith(Add,SP,SP,Oimm(4)) ; Move(T1,A0)]) in
+			let code_operation = 
+			match op with 
+			| Eq -> mips[Set(Mips.Eq,A0,T0,Oreg(T1))]
+			| Neq -> mips[Set(Mips.Ne,A0,T0,Oreg(T1))]
+			| Lt -> mips[Set(Mips.Lt,A0,T0,Oreg(T1))]
+			| Leq -> mips[Set(Mips.Le,A0,T0,Oreg(T1))]
+			| Gt -> mips[Set(Mips.Gt,A0,T0,Oreg(T1))]
+			| Geq -> mips[Set(Mips.Ge,A0,T0,Oreg(T1))]
+			| BPlus -> mips[Arith(Mips.Add,A0,T0,Oreg(T1))]
+			| BMinus -> mips[Arith(Mips.Sub,A0,T0,Oreg(T1))]
+			| Mul -> mips[Arith(Mips.Mul,A0,T0,Oreg(T1))]
+			| Div -> mips[Arith(Mips.Div,A0,T0,Oreg(T1))]
+			| Mod -> mips[Arith(Mips.Rem,A0,T0,Oreg(T1))]
+			| And -> mips[Mips.And(A0,T0,Oreg(T1))]
+			| Or -> mips[Mips.Or(A0,T0,Oreg(T1))]
+			| PointerBPlus -> let taille = get_size (pointed_type e1.texp_type) in
+				mips[Arith(Mips.Mul,T1,T1,Oimm(taille)) ; Arith(Mips.Add,A0,T0,Oreg(T1))]
+			| PointerIntBMinus -> let taille = get_size (pointed_type e1.texp_type) in
+				mips[Arith(Mips.Mul,T1,T1,Oimm(taille)) ; Arith(Sub,A0,T0,Oreg(T1))]
+			| PointerPointerBMinus -> (*je suis pas certain que ce soit cela que ça fait*)
+				let taille = get_size (pointed_type e1.texp_type) in
+				mips[Arith(Sub,A0,T0,Oreg(T1)) ; Arith(Mips.Div,A0,A0,Oimm(taille))]
+  in code_debut ++ code_operation
+  end 
 
   |TSizeof (t) -> mips[Li (A0,get_size (t))]
 	
