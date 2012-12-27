@@ -245,7 +245,7 @@ mais la chaine ne sera bien déclarée qu'une seule fois *)
 		if ispointer t then 
           {texp = TUnop(aux op, e'); texp_pos = n.exp_pos ; texp_type = t}
 		else 
-		  {texp = TUnop(aux op, e'); texp_pos = n.exp_pos ; texp_type = t}
+		  {texp = TUnop(op, e'); texp_pos = n.exp_pos ; texp_type = t}
 	else raise (Argtype_error (n.exp_pos,(string_of_unop op),[t]))
       else raise (Type_error 
         (n.exp_pos,"lvalue required as left operand of assignment" ))
@@ -366,7 +366,7 @@ let rec instrType env t0 i = match i.instr with
       let i1' = instrType env t0 i1 in 
       if num e'.texp_type then 
 	let ti = 
-          {tinstr = TBloc {tbloc = [],(l2'@[i1']) ; 
+          {tinstr = TBloc {tbloc = [],([i1']@l2') ; 
           tbloc_pos = i1'.tinstr_pos}; tinstr_pos =i1'.tinstr_pos} 
         in
 	let ti = {tinstr= TWhile (e',ti) ; tinstr_pos = i1'.tinstr_pos } in 

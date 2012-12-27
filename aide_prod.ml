@@ -123,11 +123,16 @@ let set_loc p =
 let func_begin frame_size =
   mips[Sw(FP, Areg(-4,SP)); Arith (Sub ,FP, SP, Oimm (4));  Sw(RA, Areg(-4,FP)); Arith(Sub, SP,FP,Oimm(frame_size-4))]
 
-let func_end ()=
-  mips[Arith(Add,SP,FP,Oimm(4));Lw(RA,Areg(-4,FP));Lw(FP,Areg(0,FP)); Jr( RA) ]
+let func_end f =
+  mips[Arith(Add,SP,FP,Oimm(f.f_result_pos));Lw(RA,Areg(-4,FP));Lw(FP,Areg(0,FP)); Jr(RA) ]
+  (*on positionne SP sur le résultat renvoyé par la fonction*)
 
 
 (*fonction qui renvoie le type sous un pointeurs, utile pour les différentes opérations*)
 let pointed_type = function 
 	| TPointer t -> t
 	| _ -> assert false
+	
+let new_label = 
+	let compteur = ref 0 in 
+	function s -> incr compteur ; s ^ (string_of_int !compteur)

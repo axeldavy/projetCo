@@ -3,7 +3,7 @@ open Ast_Type
 open Definition
 open Aide_prod
 open List
-open Typeur
+(*open Typeur*)
 	
 
 let move adr_depart adr_arrivee size = failwith "TODO"
@@ -12,7 +12,7 @@ let move adr_depart adr_arrivee size = failwith "TODO"
 	
 let rec lvalue_code e = match e.texp with
   |TCharacter _ |TEntier _ |TChaine _ |TAssignement _ |TCall _ -> assert false
-  |TUnop _ |TBinop _ |TSizeof _ -> failwith "TODO!"(*assert false  euh, je pense que au contraire c'est bien une valeur à gauche pour binop dans certains cas*)
+  |TUnop _ |TBinop _ |TSizeof _ -> assert false (*assert false  euh, je pense que au contraire c'est bien une valeur à gauche pour binop dans certains cas non cf poly*)
   |TVariable var -> begin match var with 
 	| TGvar v -> mips [La(A0,"var_"^v.gv_name)]
 	| TLvar v -> mips [Arith(Add,A0,FP,Oimm(v.lv_loc))] 
@@ -32,7 +32,7 @@ match e.texp with
   |TCharacter c -> mips[Li (A0,int_of_char c)]
   |TEntier i -> mips[Li32 (A0,i)]
   |TChaine s -> begin try
-			mips[La(A0,Hashtbl.find echaine s)] 
+			mips[La(A0,Hashtbl.find Typeur.echaine s)] 
 		with Not_found -> assert false end
   |TVariable (TGvar gvar) -> (match(gvar.gv_type) with
 				 | TInt | TChar | TPointer _ -> mips[Lw(A0,Alab("var_"^gvar.gv_name))]
@@ -68,7 +68,13 @@ match e.texp with
 				++ (mips[ Lw (A1,Areg(0,SP)); Sw (A0,Areg(0,A1)); Arith(Add,SP,SP,Oimm(4))])
   |TCall (f,[e]) when f.f_name = "putchar"-> let c = code_expr e in c++ (mips [Li (V0, 11) ; Syscall ]) (* on suppose dans A0 *) 
   |TCall (f,[e]) when f.f_name = "sbrk"-> let c = code_expr e in c ++ (mips [Li (V0, 9); Syscall; Move(A0,V0)]) (* on suppose dans A0; à tester *) 
-  |TCall (f,l) -> failwith "TODO"
+  |TCall (f,l) -> (* on suppose sortier dans A0. A completer et corriger*)
+		let put_arg e =  
+			(code_expr e) ++ (mips [Sw(A0,Areg(-4,SP)) ; Arith(Sub,SP,SP,Oimm(4))])
+		in 
+		let taille_resultat = 4* (size_octet e.texp_type) in
+		let code1 = List.fold_left (fun acc e -> acc ++ (put_arg e)) nop l in
+		(mips[Arith(Sub,SP,SP,Oimm(taille_resultat)) ]) ++ code1 ++ (mips [Jal("fun_"^f.f_name) ; Lw(A0,Areg(0,SP)) ; Arith(Add,SP,SP,Oimm(taille_resultat))])
   |TUnop (op,e) -> 
 			begin match op with
 			| PPleft -> let code_adr = lvalue_code e in
@@ -133,7 +139,8 @@ match e.texp with
 	
 let rec code_instr = function
 	| TEmpty -> nop
-	| TWhile(e,i) -> failwith "TODO"
+	| TWhile(e,i) -> let label_1 = new_label "while" and label_2 = new_label "while" in 
+		(mips[J label_2 ; Label label_1]) ++ (code_instr i.tinstr) ++ (mips[Label label_2]) ++ (code_expr e) ++ (mips[Bnez(A0,label_1)]) 
 	| TReturn e -> failwith "TODO"
 	| TIf(e,i1,None) -> failwith "TODO"
 	| TIf(e,i1,Some i2) -> failwith "TODO"
@@ -146,7 +153,7 @@ let code_decl = function
 	| TDvar _ -> nop (*les déclarations de variables vont dans le champ data*)
 	| TDf dec_f ->  let f = dec_f.tfun in(*appelera la fonction pour produire du code sur son bloc*)
 			let code = code_instr (TBloc dec_f.tcontent) in (* on prend sp>=0*)			
-			(mips[Label ("fun_"^f.f_name)]) ++ (func_begin (f.f_lvar_size)) ++ code ++ (func_end ()) 	
+			(mips[Label ("fun_"^f.f_name)]) ++ (func_begin (f.f_lvar_size)) ++ code ++ (func_end f) 	
 
 let code_data2 = function 
 	| TDt _ | TDf _ -> []
@@ -160,7 +167,7 @@ let code_data2 = function
 	| _ -> assert false
 
 let code_data () =  
-	 Hashtbl.fold (fun x y l -> Asciiz (y, x) :: l) echaine [Asciiz ("newline", "\n")]
+	 Hashtbl.fold (fun x y l -> Asciiz (y, x) :: l) Typeur.echaine [Asciiz ("newline", "\n")]
 
 	
 let code_main = mips[Label "main";Arith(Sub, FP,SP,Oimm(8));Arith(Sub, SP,SP,Oimm(8));Sw(A0,Areg(4,SP));Sw(A1,Areg(0,SP));Jal "fun_main";Li(V0,10);Syscall]
