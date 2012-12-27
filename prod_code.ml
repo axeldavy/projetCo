@@ -12,7 +12,7 @@ let move adr_depart adr_arrivee size = failwith "TODO"
 	
 let rec lvalue_code e = match e.texp with
   |TCharacter _ |TEntier _ |TChaine _ |TAssignement _ |TCall _ -> assert false
-  |TUnop _ |TBinop _ |TSizeof _ -> assert false (*assert false  euh, je pense que au contraire c'est bien une valeur à gauche pour binop dans certains cas non cf poly*)
+  |TUnop _ |TBinop _ |TSizeof _ -> assert false 
   |TVariable var -> begin match var with 
 	| TGvar v -> mips [La(A0,"var_"^v.gv_name)]
 	| TLvar v -> mips [Arith(Add,A0,FP,Oimm(v.lv_loc))] 
@@ -80,11 +80,11 @@ match e.texp with
 			| PPleft -> let code_adr = lvalue_code e in
 				code_adr ++ (mips[Lw(T0,Areg(0,A0)) ; Arith(Add,T0,T0,Oimm(1)) ; Sw(T0,Areg(0,A0)) ; Move(A0,T0)]) 
 			| PPright -> let code_adr = lvalue_code e in
-				code_adr ++ (mips[Lw(T0,Areg(0,A0)) ; Arith(Add,T0,T0,Oimm(1)) ; Sw(T0,Areg(0,A0)) ; Arith(Add,A0,T0,Oimm(-1))]) 
+				code_adr ++ (mips[Lw(T0,Areg(0,A0)) ; Arith(Add,T0,T0,Oimm(1)) ; Sw(T0,Areg(0,A0)) ; Arith(Sub,A0,T0,Oimm(1))]) 
 			| MMleft -> let code_adr = lvalue_code e in
-				code_adr ++ (mips[Lw(T0,Areg(0,A0)) ; Arith(Add,T0,T0,Oimm(-1)) ; Sw(T0,Areg(0,A0)) ; Move(A0,T0)]) 
+				code_adr ++ (mips[Lw(T0,Areg(0,A0)) ; Arith(Sub,T0,T0,Oimm(1)) ; Sw(T0,Areg(0,A0)) ; Move(A0,T0)]) 
 			| MMright -> let code_adr = lvalue_code e in
-				code_adr ++ (mips[Lw(T0,Areg(0,A0)) ; Arith(Add,T0,T0,Oimm(-1)) ; Sw(T0,Areg(0,A0)) ; Arith(Add,A0,T0,Oimm(1))]) 
+				code_adr ++ (mips[Lw(T0,Areg(0,A0)) ; Arith(Sub,T0,T0,Oimm(1)) ; Sw(T0,Areg(0,A0)) ; Arith(Add,A0,T0,Oimm(1))]) 
 			| Adr_get -> lvalue_code e
 			| Definition.Not -> (code_expr e) ++ (mips[Mips.Not(A0,A0)])
 			| UMinus -> let code_e = code_expr e in 
@@ -96,13 +96,13 @@ match e.texp with
 				code_adr ++ (mips[Lw(T0,Areg(0,A0)) ; Arith(Add,T0,T0,Oimm(taille)) ; Sw(T0,Areg(0,A0)) ; Move(A0,T0)]) 
 			| PointerPPright -> let code_adr = lvalue_code e in
 							let taille = get_size (pointed_type e.texp_type) in
-				code_adr ++ (mips[Lw(T0,Areg(0,A0)) ; Arith(Add,T0,T0,Oimm(taille)) ; Sw(T0,Areg(0,A0)) ; Arith(Add,A0,T0,Oimm(-taille))]) 
+				code_adr ++ (mips[Lw(T0,Areg(0,A0)) ; Arith(Add,T0,T0,Oimm(taille)) ; Sw(T0,Areg(0,A0)) ; Arith(Mips.Sub,A0,T0,Oimm(taille))]) 
 			| PointerMMleft -> let code_adr = lvalue_code e in
 							let taille = get_size (pointed_type e.texp_type) in
-				code_adr ++ (mips[Lw(T0,Areg(0,A0)) ; Arith(Add,T0,T0,Oimm(-taille)) ; Sw(T0,Areg(0,A0)) ; Move(A0,T0)])
+				code_adr ++ (mips[Lw(T0,Areg(0,A0)) ; Arith(Mips.Sub,T0,T0,Oimm(taille)) ; Sw(T0,Areg(0,A0)) ; Move(A0,T0)])
 			| PointerMMright -> let code_adr = lvalue_code e in
 							let taille = get_size (pointed_type e.texp_type) in
-				code_adr ++ (mips[Lw(T0,Areg(0,A0)) ; Arith(Add,T0,T0,Oimm(-taille)) ; Sw(T0,Areg(0,A0)) ; Arith(Add,A0,T0,Oimm(taille))])  
+				code_adr ++ (mips[Lw(T0,Areg(0,A0)) ; Arith(Mips.Sub,T0,T0,Oimm(taille)) ; Sw(T0,Areg(0,A0)) ; Arith(Add,A0,T0,Oimm(taille))]) 
 			end
 			
   |TBinop (op,e1,e2) -> begin let code_debut = (code_expr e1) 
