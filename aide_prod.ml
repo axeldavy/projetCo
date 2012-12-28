@@ -136,3 +136,33 @@ let pointed_type = function
 let new_label = 
 	let compteur = ref 0 in 
 	function s -> incr compteur ; s ^ (string_of_int !compteur)
+
+(* charge quelque chose de type1 pointé par reg1 dans reg2*)
+let charger_p type1 reg1 reg2 =
+ match type1 with
+   TChar-> mips[Lb(reg2,Areg(0,reg1))]
+ |TInt-> mips[Lw(reg2,Areg(0,reg1))]
+ |_ -> assert false (* ne sert que pour des char et des int *)
+
+
+(* meme chose à l'envers*)
+let mettre_p type1 reg1 reg2 =
+ match type1 with
+   TChar-> mips[Sb(reg2,Areg(0,reg1))]
+ |TInt-> mips[Sw(reg2,Areg(0,reg1))]
+ |_ -> assert false (* ne sert que pour des char et des int *)
+
+(*meme chose avec offset et taille au lieu de type*)
+let charger_p2 taille reg1 reg2 offset =
+ match taille with
+   1-> mips[Lb(reg2,Areg(offset,reg1))]
+ |4-> mips[Lw(reg2,Areg(offset,reg1))]
+ |_ -> failwith "TODO" (* faire pour les structures *)
+
+
+
+let mettre_p2 taille reg1 reg2 offset=
+ match taille with
+   1-> mips[Sb(reg2,Areg(offset,reg1))]
+ |4-> mips[Sw(reg2,Areg(offset,reg1))]
+ |_ -> failwith "TODO"

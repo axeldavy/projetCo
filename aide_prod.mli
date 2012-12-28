@@ -16,3 +16,7 @@ val apres_appel : unit -> code*)
 (*val prep_binop : mtype -> mtype -> code
 val prep_unop : mtype -> code *)
 val new_label : string -> string
+val charger_p : mtype -> register -> register -> code
+val mettre_p : mtype -> register -> register -> code
+val charger_p2 : int -> register -> register -> int -> code
+val mettre_p2 : int -> register -> register -> int -> code
