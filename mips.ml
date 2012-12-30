@@ -3,7 +3,7 @@ type register =
   | ZERO | A0 | A1 | A2 | A3 | V0 | V1 | T0 | T1 | T2 | T3 | T4 | S0 | S1 | S2 | S3 | S4 | RA | SP | FP 
 
 type address =
-  | Alab of string
+  | Alab of int * string
   | Areg of int * register
 
 type operand =
@@ -108,7 +108,7 @@ let print_condition fmt = function
   | Ge -> pp_print_string fmt "sge"
 
 let print_address fmt = function
-  | Alab s -> pp_print_string fmt s
+  | Alab (ofs,s) -> fprintf fmt "%s+%d" s ofs
   | Areg (ofs, r) -> fprintf fmt "%d(%a)" ofs print_register r
 
 let print_operand fmt = function

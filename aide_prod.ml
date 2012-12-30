@@ -55,7 +55,7 @@ let size_up_to_date = function
 	| TUnion u -> u.u_size <> 0 
 
 	(*renvoie le nombre d'octets nÃ©cessaires pour stocker une variable du type t*)
-let size_octet t = (get_size t +3)/4
+let taille_arrondie t = 4*((get_size t +3)/4)
 
 	
 
@@ -90,9 +90,9 @@ let rec set_loc_instr pos = function
 				| TLvar v -> v
 				| TGvar _ -> assert false 
 			in
-			let size_o = size_octet var.lv_type in 
+			let size = taille_arrondie var.lv_type in 
 			let new_pos = assert (size_up_to_date var.lv_type) ;
-				acc - 4* size_o 
+				acc - size
 			in 
 			var.lv_loc <- new_pos ;
 			new_pos 
@@ -111,8 +111,8 @@ let set_loc p =
 			(*on suppose que tous les arguments de la fonction sont alignÃ©s sur la pile !!! (plus simple)*)
 				let res_pos = List.fold_right (fun var pos_libre -> var.lv_loc <- pos_libre ; 
 					assert (size_up_to_date var.lv_type) ;
-					let size_o = size_octet var.lv_type in 
-					pos_libre + 4*size_o 
+					let size = taille_arrondie var.lv_type in 
+					pos_libre + size 
 					) df.tfun.f_arg 4
 			(*la premiÃ¨re position libre pour un argument est en +4 (par rapport Ã  $fp)*)
 				in df.tfun.f_result_pos <- res_pos 
@@ -124,7 +124,7 @@ let func_begin frame_size =
   mips[Sw(FP, Areg(-4,SP)); Arith (Sub ,FP, SP, Oimm (4));  Sw(RA, Areg(-4,FP)); Arith(Sub, SP,FP,Oimm(frame_size-4))]
 
 let func_end f =
-  mips[Arith(Add,SP,FP,Oimm(f.f_result_pos));Lw(RA,Areg(-4,FP));Lw(FP,Areg(0,FP)); Jr(RA) ]
+  mips[Label ("f_end_" ^f.f_name) ; Arith(Add,SP,FP,Oimm(f.f_result_pos));Lw(RA,Areg(-4,FP));Lw(FP,Areg(0,FP)); Jr(RA) ]
   (*on positionne SP sur le résultat renvoyé par la fonction*)
 
 
@@ -137,32 +137,13 @@ let new_label =
 	let compteur = ref 0 in 
 	function s -> incr compteur ; s ^ (string_of_int !compteur)
 
-(* charge quelque chose de type1 pointé par reg1 dans reg2*)
-let charger_p type1 reg1 reg2 =
- match type1 with
-   TChar-> mips[Lb(reg2,Areg(0,reg1))]
- |TInt-> mips[Lw(reg2,Areg(0,reg1))]
- |_ -> assert false (* ne sert que pour des char et des int *)
 
-
-(* meme chose à l'envers*)
-let mettre_p type1 reg1 reg2 =
- match type1 with
-   TChar-> mips[Sb(reg2,Areg(0,reg1))]
- |TInt-> mips[Sw(reg2,Areg(0,reg1))]
- |_ -> assert false (* ne sert que pour des char et des int *)
-
-(*meme chose avec offset et taille au lieu de type*)
-let charger_p2 taille reg1 reg2 offset =
- match taille with
-   1-> mips[Lb(reg2,Areg(offset,reg1))]
- |4-> mips[Lw(reg2,Areg(offset,reg1))]
- |_ -> failwith "TODO" (* faire pour les structures *)
-
-
-
-let mettre_p2 taille reg1 reg2 offset=
- match taille with
-   1-> mips[Sb(reg2,Areg(offset,reg1))]
- |4-> mips[Sw(reg2,Areg(offset,reg1))]
- |_ -> failwith "TODO"
+ (*charge dans reg ce qui est à adress. 
+ Rq : on ne met dans les registres que des Int Char et Pointer *)
+let load_reg reg adress = function 
+  | TInt | TPointer _ -> mips [Lw(reg,adress)]
+  | TChar -> mips [Lb(reg,adress)]
+  
+let store_reg reg adress = function 
+  | TInt | TPointer _ -> mips [Sw(reg,adress)]
+  | TChar -> mips [Sb(reg,adress)]
