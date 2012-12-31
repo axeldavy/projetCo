@@ -147,3 +147,4 @@ let load_reg reg adress = function
 let store_reg reg adress = function 
   | TInt | TPointer _ -> mips [Sw(reg,adress)]
   | TChar -> mips [Sb(reg,adress)]
+  | TVoid -> nop

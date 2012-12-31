@@ -64,14 +64,14 @@ and code_expr e =
 					| _ -> assert false
   end 
   |TAssignement (e1,e2) -> let code_adr = lvalue_code e1 in 
-			   let type1 = e1.texp_type in (*ici, type1 est un pointeur*)
+			   let type1 = e1.texp_type in (*ici, type1 est un pointeur: faux car pointed_type type1 me donne assert failure*)
 			   let code_e = code_expr e2 in (* on suppose sortier dans A0. A completer et corriger*)
 			   code_adr 
 			   ++ (mips [Arith(Sub,SP,SP,Oimm(4))]) 
-			   ++ store_reg A0 (Areg(0,SP)) type1 
+			   ++ store_reg A0 (Areg(0,SP)) (TPointer type1) 
 			   ++ code_e
-			   ++ load_reg A1 (Areg(0,SP)) type1 
-			   ++ store_reg A0 (Areg(0,A1)) e2.texp_type 
+			   ++ load_reg A1 (Areg(0,SP)) (TPointer type1) 
+			   ++ store_reg A0 (Areg(0,A1)) type1 (*pas e2.texp_type. Prend par exemple char x; int y; ... x=y -> on doit convertir y en char*) 
 			   ++ mips[Arith(Add,SP,SP,Oimm(4))]
   |TCall (f,[e]) when f.f_name = "putchar"-> let c = code_expr e in c++ (mips [Li (V0, 11) ; Syscall ])
   
@@ -79,14 +79,14 @@ and code_expr e =
   
   |TCall (f,l) -> (* on suppose sortier dans A0. A completer et corriger*)
     let put_arg e =  
-      (code_expr e) ++ store_reg A0 (Areg(-4,SP)) TInt ++ (mips [Arith(Sub,SP,SP,Oimm(4))]) (* les arguments sont toujours alignés*)
+      (code_expr e) ++ (mips [Arith(Sub,SP,SP,Oimm(4))]) ++ store_reg A0 (Areg(0,SP)) TInt  (* les arguments sont toujours alignés. Attention void: taille 0. J'espère que l'on ne peut pas mettre void en argument -> à tester*)
     in 
     let taille_resultat = taille_arrondie f.f_type in
     let code_arg = List.fold_left (fun acc e -> acc ++ (put_arg e)) nop l in
     (mips[Arith(Sub,SP,SP,Oimm(taille_resultat)) ]) 
 	++ code_arg 
 	++ (mips [Jal("fun_"^f.f_name) ] (*à l'issue de l'appel de fonction, SP pointe sur le résultat, et le résultat est sur la pile*)
-	++ store_reg A0 (Areg(0,SP)) f.f_type (*pas de problème ici normalement puisque le résultat est aligné*)
+	++ store_reg A0 (Areg(0,SP)) f.f_type (* peut être void*)
 	++ mips[Arith(Add,SP,SP,Oimm(taille_resultat))])
 	
   |TUnop (op,e) -> (begin let type1 = e.texp_type in
@@ -120,7 +120,7 @@ and code_expr e =
   end )
     
   |TBinop (op,e1,e2) -> begin let code_debut = (code_expr e1) 
-				++ (mips[Sw(A0,Areg(-4,SP)) ; Arith(Sub,SP,SP,Oimm(4))]) 
+				++ (mips[Arith(Sub,SP,SP,Oimm(4)); Sw(A0,Areg(0,SP))]) 
 				++ (code_expr e2) 
 				++ (mips[Lw(T0,Areg(0,SP)) ; Arith(Add,SP,SP,Oimm(4)) ; Move(T1,A0)]) in
 			      let code_operation = 
