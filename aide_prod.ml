@@ -3,6 +3,11 @@ open Ast_Type
 open Definition
 
 
+let rec not_struct = function 
+  | TInt | TChar | TPointer _ | TTypenull | TVoid-> true
+  | _ -> false
+
+
 	(*fonction qui renvoie true si un type de données doit être aligné*)
 let rec aligne = function 
 	| TInt | TPointer _ -> true
@@ -143,8 +148,14 @@ let new_label =
 let load_reg reg adress = function 
   | TInt | TPointer _ -> mips [Lw(reg,adress)]
   | TChar -> mips [Lb(reg,adress)]
+  | _ -> assert false
   
 let store_reg reg adress = function 
   | TInt | TPointer _ -> mips [Sw(reg,adress)]
   | TChar -> mips [Sb(reg,adress)]
   | TVoid -> nop
+  | _ -> assert false
+
+
+
+

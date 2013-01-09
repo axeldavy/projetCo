@@ -6,9 +6,26 @@ open Aide_prod
 open List
 	
 
-let move adr_depart adr_arrivee size = failwith "TODO"
-	(*fonction pour déplacer des blocs de données,
-	doit pouvoir marcher même sur des données non alignées*)
+let get_offset = function 
+  | Areg(i,_) -> i
+  | Alab(i,_) -> i
+
+let add_offset i = function 
+  | Areg(j,reg) -> Areg(i+j,reg)
+  | Alab(j,lab) -> Alab(i+j,lab)
+
+
+(*fonction pour déplacer des blocs de données,
+doit pouvoir marcher même sur des données non alignées*)
+let rec move adr_depart adr_arrivee size = match size with 
+  | 0 -> nop
+  | i when (i >= 4)&&((get_offset adr_depart) mod 4 = 0)&&((get_offset adr_arrivee) mod 4 = 0) -> 
+	mips [Lw(T4,adr_depart) ; Sw(T4,adr_arrivee)]
+	++ (move (add_offset 4 adr_depart) (add_offset 4 adr_arrivee) (size -4) ) 
+	(*traite le cas où les données sont alignées*)
+  | i -> mips [Lb(T4,adr_depart) ; Sb(T4,adr_arrivee)]
+	++ (move (add_offset 1 adr_depart) (add_offset 1 adr_arrivee) (size -1) ) 
+	(*cas général : on déplace bit par bit*)
 	
 let rec lvalue_code e = match e.texp with
   |TCharacter _ |TEntier _ |TChaine _ |TAssignement _ |TCall _ -> assert false
@@ -35,59 +52,133 @@ and code_expr e =
 			mips[La(A0,Hashtbl.find Typeur.echaine s)] 
     with Not_found -> assert false 
 	end
-  |TVariable (TGvar gvar) -> begin match(gvar.gv_type) with
+  |TVariable (TGvar gvar) -> begin match(gvar.gv_type) with (*DONE*)
     | TInt | TChar | TPointer _ -> mips[Lw(A0,Alab(0,"var_"^gvar.gv_name))]
-    | TStruct stru -> failwith "TODO"
-    | TUnion uni -> failwith "TODO"				  
+    | TStruct _ | TUnion _  -> let size = taille_arrondie gvar.gv_type in 
+		mips [Arith(Sub,SP,SP,Oimm(size))]
+		++ move (Alab(0,"var_"^gvar.gv_name)) (Areg(0,SP)) size				  
     | TVoid | TTypenull -> assert false
     end
 	
   |TVariable (TLvar lvar) -> begin match(lvar.lv_type) with
     | TInt | TChar | TPointer _ -> mips[Lw(A0,Areg(lvar.lv_loc,FP))]
-    | TStruct stru -> failwith "TODO"
-    | TUnion uni -> failwith "TODO"				  
+    | TStruct _ | TUnion _ ->  let size = taille_arrondie lvar.lv_type in 
+		mips [Arith(Sub,SP,SP,Oimm(size))]
+		++ move (Areg(lvar.lv_loc,FP)) (Areg(0,SP)) size				  
     | TVoid | TTypenull -> assert false
     end 
 	
   |TPointer_access e when num (pointed_type e.texp_type) -> 
-			let code = code_expr e and type1 = pointed_type (e.texp_type) in (* on suppose sortier dans A0. A completer et corriger*)
+			let code = code_expr e and type1 = pointed_type (e.texp_type) in 
 			code ++ load_reg A0 (Areg(0,A0)) type1
 			
-  |TPointer_access e -> failwith "TODO"
+  |TPointer_access e -> let code = code_expr e and size = taille_arrondie e.texp_type in (*DONE*)
+			code ++ mips [Arith(Sub,SP,SP,Oimm(size))]
+			++ (move (Areg(0,A0)) (Areg(0,SP)) size)
 			
-  |TAccess_field (e,x) -> begin let code_adr = lvalue_code e in
-				match e.texp_type with (* on suppose sortier dans A0. A completer et corriger*)
-				| TUnion uni -> let str_var = List.find (fun var -> var.lv_name = x) uni.u_content in
-						code_adr ++ (mips[Lw(A0,Areg(str_var.lv_loc,A0))])
+  |TAccess_field (e,x) when lvalue e.texp -> begin let code_adr = lvalue_code e in 
+				match e.texp_type with 
+				| TUnion uni -> let uni_var = List.find (fun var -> var.lv_name = x) uni.u_content in
+					if num uni_var.lv_type then 
+					  code_adr ++ (mips[Lw(A0,Areg(uni_var.lv_loc,A0))])
+					else
+					  (let size_var = taille_arrondie uni_var.lv_type in
+					  code_adr 
+					  ++ mips([Arith(Sub,SP,SP,Oimm(size_var))])
+					  ++ move (Areg(0,A0)) (Areg(0,SP)) size_var
+					  )
 				| TStruct stru -> let str_var = List.find (fun var -> var.lv_name = x) stru.s_content in
-						  code_adr ++ (mips[Lw(A0,Areg(str_var.lv_loc,A0))])
-					| _ -> assert false
+					if num str_var.lv_type then 
+					  code_adr ++ (mips[Lw(A0,Areg(str_var.lv_loc,A0))])
+					else 
+					  (let size_var = taille_arrondie str_var.lv_type in
+					  code_adr 
+					  ++ mips([Arith(Sub,SP,SP,Oimm(size_var))])
+					  ++ move (Areg(0,A0)) (Areg(0,SP)) size_var
+					  )
+				| _ -> assert false
   end 
-  |TAssignement (e1,e2) -> let code_adr = lvalue_code e1 in 
-			   let type1 = e1.texp_type in (*ici, type1 est un pointeur: faux car pointed_type type1 me donne assert failure*)
-			   let code_e = code_expr e2 in (* on suppose sortier dans A0. A completer et corriger*)
+  |TAccess_field (e,x) -> begin (*dans le cas général, le résultat de e est en SP*)
+			let code = code_expr e and size = taille_arrondie e.texp_type in
+			match e.texp_type with 
+				| TUnion uni -> let uni_var = List.find (fun var -> var.lv_name = x) uni.u_content in
+					if num uni_var.lv_type then 
+					  code ++ (mips[Lw(A0,Areg(uni_var.lv_loc,SP)) ; Arith(Add,SP,SP,Oimm(size))]) (*La structure est en 0($sp)*)
+					else 
+					  (let size_var = taille_arrondie uni_var.lv_type in
+					  code 
+					  ++ mips([Arith(Sub,SP,SP,Oimm(size_var))])
+					  ++ move (Areg(size_var+uni_var.lv_loc,SP)) (Areg(0,SP)) size_var
+					  ++ move (Areg(0,SP)) (Areg(size,SP)) size_var
+					  ++ mips [Arith(Add,SP,SP,Oimm(size))]
+					  )
+				| TStruct str -> let str_var = List.find (fun var -> var.lv_name = x) str.s_content in
+					if num str_var.lv_type then 
+					  code ++ (mips[Lw(A0,Areg(str_var.lv_loc,SP)) ; Arith(Add,SP,SP,Oimm(size))]) (*La structure est en 0($sp)*)
+					else 
+					  (let size_var = taille_arrondie str_var.lv_type in
+					  code 
+					  ++ mips([Arith(Sub,SP,SP,Oimm(size_var))])
+					  ++ move (Areg(size_var+str_var.lv_loc,SP)) (Areg(0,SP)) size_var
+					  ++ move (Areg(0,SP)) (Areg(size,SP)) size_var
+					  ++ mips [Arith(Add,SP,SP,Oimm(size))]
+					  )
+				| _ -> assert false
+			end
+
+  |TAssignement (e1,e2) when num e2.texp_type -> 
+		(*cas où e2 est num, son résultat est dans A0*)
+			   let code_adr = lvalue_code e1 in 
+			   let type1 = e1.texp_type in
+			   let code_e = code_expr e2 in 
 			   code_adr 
 			   ++ (mips [Arith(Sub,SP,SP,Oimm(4))]) 
 			   ++ store_reg A0 (Areg(0,SP)) (TPointer type1) 
 			   ++ code_e
 			   ++ load_reg A1 (Areg(0,SP)) (TPointer type1) 
-			   ++ store_reg A0 (Areg(0,A1)) type1 (*pas e2.texp_type. Prend par exemple char x; int y; ... x=y -> on doit convertir y en char*) 
+			   ++ store_reg A0 (Areg(0,A1)) type1 
 			   ++ mips[Arith(Add,SP,SP,Oimm(4))]
+
+
+  | TAssignement (e1,e2) ->
+		(* cas où le résultat est sur la pile (structures et unions)*) 
+			   let code_adr = lvalue_code e1 in 
+			   let type1 = e1.texp_type in
+			   let code_e = code_expr e2 in
+			   let taille_2 = taille_arrondie e2.texp_type in
+			   code_adr
+			   ++ (mips [Arith(Sub,SP,SP,Oimm(4))]) 
+			   ++ store_reg A0 (Areg(0,SP)) (TPointer type1)
+			   ++ code_e
+			   ++ load_reg A1 (Areg(taille_2,SP)) (TPointer type1)
+			   ++ move (Areg(0,SP)) (Areg(0,A0)) taille_2
+			   ++ mips [Arith(Add,SP,SP,Oimm(taille_2+4))]
+
   |TCall (f,[e]) when f.f_name = "putchar"-> let c = code_expr e in c++ (mips [Li (V0, 11) ; Syscall ])
   
   |TCall (f,[e]) when f.f_name = "sbrk"-> let c = code_expr e in c ++ (mips [Li (V0, 9); Syscall; Move(A0,V0)]) 
   
   |TCall (f,l) -> (* on suppose sortier dans A0. A completer et corriger*)
-    let put_arg e =  
-      (code_expr e) ++ (mips [Arith(Sub,SP,SP,Oimm(4))]) ++ store_reg A0 (Areg(0,SP)) TInt  (* les arguments sont toujours alignés. Attention void: taille 0. J'espère que l'on ne peut pas mettre void en argument -> à tester*)
+    let put_arg e =
+	if num e.texp_type then    
+    	  (code_expr e) ++ (mips [Arith(Sub,SP,SP,Oimm(4))]) ++ store_reg A0 (Areg(0,SP)) TInt
+	else 
+	  code_expr e
+(*Attention void: taille 0. J'espère que l'on ne peut pas mettre void en argument -> à tester*)
     in 
+
     let taille_resultat = taille_arrondie f.f_type in
     let code_arg = List.fold_left (fun acc e -> acc ++ (put_arg e)) nop l in
-    (mips[Arith(Sub,SP,SP,Oimm(taille_resultat)) ]) 
+      if not_struct f.f_type then 
+        (mips[Arith(Sub,SP,SP,Oimm(taille_resultat)) ]) 
 	++ code_arg 
-	++ (mips [Jal("fun_"^f.f_name) ] (*à l'issue de l'appel de fonction, SP pointe sur le résultat, et le résultat est sur la pile*)
+	++ mips [Jal("fun_"^f.f_name) ] (*à l'issue de l'appel de fonction, SP pointe sur le résultat, et le résultat est sur la pile*)
 	++ store_reg A0 (Areg(0,SP)) f.f_type (* peut être void*)
-	++ mips[Arith(Add,SP,SP,Oimm(taille_resultat))])
+	++ mips[Arith(Add,SP,SP,Oimm(taille_resultat))]
+      else
+	(mips[Arith(Sub,SP,SP,Oimm(taille_resultat)) ])
+	++ code_arg
+	++ mips [Jal("fun_"^f.f_name)]
 	
   |TUnop (op,e) -> (begin let type1 = e.texp_type in
      match op with
@@ -158,9 +249,14 @@ let rec code_instr f = function
 		   ++ (mips[Label label_2]) ++ (code_expr e) ++ (mips[Bnez(A0,label_1)]) 
 		   
   | TReturn None -> nop		   
-  | TReturn (Some e) -> (*on suppose sortier dans A0. A completer et corriger*) 
-		(code_expr e)  
-		++ (mips [Sw(A0,Areg(f.f_result_pos,FP)) ; Arith(Sub,SP,SP,Oimm(4)) ; J ("f_end_" ^f.f_name)])
+  | TReturn (Some e) when not_struct e.texp_type -> (*cas où la sortie est dans A0*) 
+		(code_expr e) 
+		++ store_reg A0 (Areg(f.f_result_pos,FP))  e.texp_type
+		++ mips [J ("f_end_" ^f.f_name)]
+  | TReturn (Some e) -> let size = taille_arrondie e.texp_type in 
+		code_expr e 
+		++ move (Areg(0,SP)) (Areg(f.f_result_pos,FP)) size
+		++ mips [J ("f_end_"^f.f_name)]
 		
   | TIf(e,i1,None) -> let code_e = code_expr e in
 		      let label_1 = new_label "if" in
@@ -173,7 +269,10 @@ let rec code_instr f = function
 			 code_e ++ mips[Beqz(A0,label_1)] ++ code_i1 ++ mips[B(label_2)] 
 			 ++ mips[Label label_1] ++ code_i2 ++ mips[Label (label_2)]
 			 
-  | TExpression e -> code_expr e
+  | TExpression e -> if not_struct e.texp_type then 
+			code_expr e
+		     else 
+			code_expr e ++ mips [Arith(Add,SP,SP,Oimm(taille_arrondie e.texp_type))]
   
   | TBloc b -> (* faire gestion déclaration de variables ?*)
     List.fold_left (fun acc inst -> acc ++ (code_instr f (inst.tinstr))) nop (snd(b.tbloc))

@@ -4,6 +4,7 @@ open Ast_Type
 open Definition
 
 (*fonction qui renvoie true si un type de données doit être aligné*)
+val not_struct : mtype -> bool
 val aligne : mtype -> bool
 val get_size : mtype -> int
 val taille_arrondie : mtype -> int

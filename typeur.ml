@@ -487,6 +487,8 @@ let rec fileType env l =
 	end 
 
       | Df df -> let t,id,lvar,b = df.decfun in 
+	let _ = List.iter (fun (t,x) -> if t = Void then raise (Type_error (df.decfun_pos,"argument "^x^ " is void"))) lvar
+	in 
 	let t' = mtype_of_ttype env df.decfun_pos t in 
 	if (SMap.mem ("fun_"^id) env) || (SMap.mem ("var_"^id) env) 
 	then raise (Type_error 
