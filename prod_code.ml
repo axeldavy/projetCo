@@ -80,7 +80,7 @@ and code_expr e =
 				match e.texp_type with 
 				| TUnion uni -> let uni_var = List.find (fun var -> var.lv_name = x) uni.u_content in
 					if num uni_var.lv_type then 
-					  code_adr ++ (mips[Lw(A0,Areg(uni_var.lv_loc,A0))])
+					  code_adr ++ load_reg A0 (Areg(uni_var.lv_loc,A0)) (uni_var.lv_type)  
 					else
 					  (let size_var = taille_arrondie uni_var.lv_type in
 					  code_adr 
@@ -89,7 +89,7 @@ and code_expr e =
 					  )
 				| TStruct stru -> let str_var = List.find (fun var -> var.lv_name = x) stru.s_content in
 					if num str_var.lv_type then 
-					  code_adr ++ (mips[Lw(A0,Areg(str_var.lv_loc,A0))])
+					  code_adr ++ load_reg A0 (Areg(str_var.lv_loc,A0)) (str_var.lv_type)  
 					else 
 					  (let size_var = taille_arrondie str_var.lv_type in
 					  code_adr 
@@ -103,7 +103,7 @@ and code_expr e =
 			match e.texp_type with 
 				| TUnion uni -> let uni_var = List.find (fun var -> var.lv_name = x) uni.u_content in
 					if num uni_var.lv_type then 
-					  code ++ (mips[Lw(A0,Areg(uni_var.lv_loc,SP)) ; Arith(Add,SP,SP,Oimm(size))]) (*La structure est en 0($sp)*)
+					  code ++ load_reg A0 (Areg(uni_var.lv_loc,SP)) (uni_var.lv_type) ++ (mips[Arith(Add,SP,SP,Oimm(size))]) (*La structure est en 0($sp)*)
 					else 
 					  (let size_var = taille_arrondie uni_var.lv_type in
 					  code 
@@ -114,7 +114,7 @@ and code_expr e =
 					  )
 				| TStruct str -> let str_var = List.find (fun var -> var.lv_name = x) str.s_content in
 					if num str_var.lv_type then 
-					  code ++ (mips[Lw(A0,Areg(str_var.lv_loc,SP)) ; Arith(Add,SP,SP,Oimm(size))]) (*La structure est en 0($sp)*)
+					  code ++ load_reg A0 (Areg(str_var.lv_loc,SP)) (str_var.lv_type) ++ (mips[Arith(Add,SP,SP,Oimm(size))]) (*La structure est en 0($sp)*)
 					else 
 					  (let size_var = taille_arrondie str_var.lv_type in
 					  code 
@@ -151,8 +151,10 @@ and code_expr e =
 			   ++ store_reg A0 (Areg(0,SP)) (TPointer type1)
 			   ++ code_e
 			   ++ load_reg A1 (Areg(taille_2,SP)) (TPointer type1)
-			   ++ move (Areg(0,SP)) (Areg(0,A0)) taille_2
+			   ++ move (Areg(0,SP)) (Areg(0,A1)) taille_2
 			   ++ mips [Arith(Add,SP,SP,Oimm(taille_2+4))]
+			   ++ (mips [Arith(Sub,SP,SP,Oimm(taille_2))])
+			   ++ move (Areg(0,A1)) (Areg(0,SP)) taille_2 
 
   |TCall (f,[e]) when f.f_name = "putchar"-> let c = code_expr e in c++ (mips [Li (V0, 11) ; Syscall ])
   
@@ -227,8 +229,8 @@ and code_expr e =
 				| Mul -> mips[Arith(Mips.Mul,A0,T0,Oreg(T1))]
 				| Div -> mips[Arith(Mips.Div,A0,T0,Oreg(T1))]
 				| Mod -> mips[Arith(Mips.Rem,A0,T0,Oreg(T1))]
-				| And -> mips[Mips.And(A0,T0,Oreg(T1))]
-				| Or -> mips[Mips.Or(A0,T0,Oreg(T1))]
+				| And -> mips[Set(Ne,T0,T0,Oimm(0)); Set(Ne,T1,T1,Oimm(0)); Mips.And(A0,T0,Oreg(T1))] 
+				| Or -> mips[Set(Ne,T0,T0,Oimm(0)); Set(Ne,T1,T1,Oimm(0)); Mips.Or(A0,T0,Oreg(T1))]
 				| PointerBPlus -> let taille = get_size (pointed_type e1.texp_type) in
 						  mips[Arith(Mips.Mul,T1,T1,Oimm(taille)) ; Arith(Mips.Add,A0,T0,Oreg(T1))]
 				| PointerIntBMinus -> let taille = get_size (pointed_type e1.texp_type) in
@@ -251,7 +253,8 @@ let rec code_instr f = function
   | TReturn None -> nop		   
   | TReturn (Some e) when not_struct e.texp_type -> (*cas où la sortie est dans A0*) 
 		(code_expr e) 
-		++ store_reg A0 (Areg(f.f_result_pos,FP))  e.texp_type
+		++ store_reg A0 (Areg(f.f_result_pos,FP))  f.f_type
+
 		++ mips [J ("f_end_" ^f.f_name)]
   | TReturn (Some e) -> let size = taille_arrondie e.texp_type in 
 		code_expr e 

@@ -154,7 +154,7 @@ let store_reg reg adress = function
   | TInt | TPointer _ -> mips [Sw(reg,adress)]
   | TChar -> mips [Sb(reg,adress)]
   | TVoid -> nop
-  | _ -> assert false
+  | t -> print_string (string_of_type (Typeur.ttype_of_mtype (t))) ; assert false
 
 
 
