@@ -86,7 +86,7 @@ let rec set_loc_instr pos = function
 			| None -> 0
 			| Some i2 -> set_loc_instr pos i2.tinstr
 		in 
-		max pos1 pos2
+		min pos1 pos2
 		end ;
 	| TWhile(_,i1) -> set_loc_instr pos i1.tinstr
 	| TBloc b -> 
@@ -99,10 +99,12 @@ let rec set_loc_instr pos = function
 			let new_pos = assert (size_up_to_date var.lv_type) ;
 				acc - size
 			in 
-			var.lv_loc <- new_pos ;
+			var.lv_loc <- new_pos ;	
 			new_pos 
+
 		in 
-		List.fold_left aux pos (fst b.tbloc) 
+		let pos' = List.fold_left aux pos (fst b.tbloc)
+		in List.fold_left (fun pos2 instr -> min (set_loc_instr pos' instr.tinstr) pos2) pos' (snd b.tbloc) 
 	
 	
 	(* rq: les locations sont données dans le sens droite à gauche au lieu de gauche à droite... pas trop grave? *)
