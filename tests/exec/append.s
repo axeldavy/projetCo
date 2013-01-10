@@ -1,7 +1,7 @@
 	.text
 main:
-	sub  $fp, $sp, 8
-	sub  $sp, $sp, 8
+	sub  $fp, $sp, 12
+	sub  $sp, $sp, 12
 	sw   $a0, 4($sp)
 	sw   $a1, 0($sp)
 	jal  fun_main
@@ -306,20 +306,28 @@ f_end_strlen:
 	lw   $fp, 0($fp)
 	jr   $ra
 	.data
+	.align 2
 str_5:
 	.asciiz "que cela "
+	.align 2
 str_3:
 	.asciiz " world"
+	.align 2
 str_6:
 	.asciiz "fonctionne"
+	.align 2
 str_4:
 	.asciiz "il semble "
+	.align 2
 str_0:
 	.asciiz "foo"
+	.align 2
 str_1:
 	.asciiz "bar"
+	.align 2
 str_2:
 	.asciiz "hello"
+	.align 2
 newline:
 	.asciiz "\n"
 

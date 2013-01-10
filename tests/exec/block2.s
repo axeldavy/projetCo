@@ -1,7 +1,7 @@
 	.text
 main:
-	sub  $fp, $sp, 8
-	sub  $sp, $sp, 8
+	sub  $fp, $sp, 12
+	sub  $sp, $sp, 12
 	sw   $a0, 4($sp)
 	sw   $a1, 0($sp)
 	jal  fun_main
@@ -11,7 +11,7 @@ fun_main:
 	sw   $fp, -4($sp)
 	sub  $fp, $sp, 4
 	sw   $ra, -4($fp)
-	sub  $sp, $fp, 8
+	sub  $sp, $fp, 16
 	add  $a0, $fp, -8
 	sub  $sp, $sp, 4
 	sw   $a0, 0($sp)
@@ -24,36 +24,36 @@ fun_main:
 	syscall
 	li   $a0, 0
 	beqz $a0, if1
-	add  $a0, $fp, 0
+	add  $a0, $fp, -12
 	sub  $sp, $sp, 4
 	sw   $a0, 0($sp)
 	li   $a0, 66
 	lw   $a1, 0($sp)
 	sw   $a0, 0($a1)
 	add  $sp, $sp, 4
-	lw   $a0, 0($fp)
+	lw   $a0, -12($fp)
 	li   $v0, 11
 	syscall
 	b    if2
 if1:
-	add  $a0, $fp, 0
+	add  $a0, $fp, -16
 	sub  $sp, $sp, 4
 	sw   $a0, 0($sp)
 	li   $a0, 67
 	lw   $a1, 0($sp)
 	sw   $a0, 0($a1)
 	add  $sp, $sp, 4
-	add  $a0, $fp, 0
+	add  $a0, $fp, -12
 	sub  $sp, $sp, 4
 	sw   $a0, 0($sp)
 	li   $a0, 68
 	lw   $a1, 0($sp)
 	sw   $a0, 0($a1)
 	add  $sp, $sp, 4
-	lw   $a0, 0($fp)
+	lw   $a0, -16($fp)
 	li   $v0, 11
 	syscall
-	lw   $a0, 0($fp)
+	lw   $a0, -12($fp)
 	li   $v0, 11
 	syscall
 if2:
@@ -69,6 +69,7 @@ f_end_main:
 	lw   $fp, 0($fp)
 	jr   $ra
 	.data
+	.align 2
 newline:
 	.asciiz "\n"
 

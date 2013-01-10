@@ -43,9 +43,7 @@ and instr =
   |Expression of  expression
   |If of expression * instruction * (instruction option)
   |While of expression * instruction
-  |For of (expression list) * (expression option) * (expression list) * instruction
- (*ça dérange si je laisse le option là au lieu du list? parce que du coup on peut 
-pas avoir plus d'une expression dans ce champ là *)
+  |For of (expression list)*(expression option)*(expression list)*instruction
   |Return of (expression option)
   |Bloc of bloc
   

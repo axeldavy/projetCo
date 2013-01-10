@@ -1,7 +1,7 @@
 	.text
 main:
-	sub  $fp, $sp, 8
-	sub  $sp, $sp, 8
+	sub  $fp, $sp, 12
+	sub  $sp, $sp, 12
 	sw   $a0, 4($sp)
 	sw   $a1, 0($sp)
 	jal  fun_main
@@ -83,8 +83,7 @@ fun_main:
 	jal  fun_contient
 	sw   $a0, 0($sp)
 	add  $sp, $sp, 4
-	sub  $sp, $sp, 4
-	sw   $a0, 0($sp)
+	beqz $a0, and31
 	sub  $sp, $sp, 4
 	lw   $a0, -8($fp)
 	sub  $sp, $sp, 4
@@ -95,15 +94,10 @@ fun_main:
 	jal  fun_contient
 	sw   $a0, 0($sp)
 	add  $sp, $sp, 4
-	not  $a0, $a0
-	lw   $t0, 0($sp)
-	add  $sp, $sp, 4
-	move $t1, $a0
-	sne  $t0, $t0, 0
-	sne  $t1, $t1, 0
-	and  $a0, $t0, $t1
-	sub  $sp, $sp, 4
-	sw   $a0, 0($sp)
+	seq  $a0, $a0, 0
+and31:
+	sne  $a0, $a0, 0
+	beqz $a0, and30
 	sub  $sp, $sp, 4
 	lw   $a0, -8($fp)
 	sub  $sp, $sp, 4
@@ -114,14 +108,9 @@ fun_main:
 	jal  fun_contient
 	sw   $a0, 0($sp)
 	add  $sp, $sp, 4
-	lw   $t0, 0($sp)
-	add  $sp, $sp, 4
-	move $t1, $a0
-	sne  $t0, $t0, 0
-	sne  $t1, $t1, 0
-	and  $a0, $t0, $t1
-	sub  $sp, $sp, 4
-	sw   $a0, 0($sp)
+and30:
+	sne  $a0, $a0, 0
+	beqz $a0, and29
 	sub  $sp, $sp, 4
 	lw   $a0, -8($fp)
 	sub  $sp, $sp, 4
@@ -132,21 +121,17 @@ fun_main:
 	jal  fun_contient
 	sw   $a0, 0($sp)
 	add  $sp, $sp, 4
-	not  $a0, $a0
-	lw   $t0, 0($sp)
-	add  $sp, $sp, 4
-	move $t1, $a0
-	sne  $t0, $t0, 0
-	sne  $t1, $t1, 0
-	and  $a0, $t0, $t1
-	beqz $a0, if28
+	seq  $a0, $a0, 0
+and29:
+	sne  $a0, $a0, 0
+	beqz $a0, if32
 	sub  $sp, $sp, 4
 	la   $a0, str_2
 	sub  $sp, $sp, 4
 	sw   $a0, 0($sp)
 	jal  fun_print_string
 	add  $sp, $sp, 4
-if28:
+if32:
 	sub  $sp, $sp, 4
 	lw   $a0, -8($fp)
 	sub  $sp, $sp, 4
@@ -215,7 +200,7 @@ fun_to_string:
 	add  $sp, $sp, 4
 	move $t1, $a0
 	sne  $a0, $t0, $t1
-	beqz $a0, if26
+	beqz $a0, if27
 	add  $a0, $fp, -8
 	sub  $sp, $sp, 4
 	sw   $a0, 0($sp)
@@ -239,7 +224,7 @@ fun_to_string:
 	lw   $a1, 0($sp)
 	sw   $a0, 0($a1)
 	add  $sp, $sp, 4
-if26:
+if27:
 	add  $a0, $fp, -8
 	sub  $sp, $sp, 4
 	sw   $a0, 0($sp)
@@ -272,7 +257,7 @@ if26:
 	add  $sp, $sp, 4
 	move $t1, $a0
 	sne  $a0, $t0, $t1
-	beqz $a0, if27
+	beqz $a0, if28
 	add  $a0, $fp, -8
 	sub  $sp, $sp, 4
 	sw   $a0, 0($sp)
@@ -296,7 +281,7 @@ if26:
 	lw   $a1, 0($sp)
 	sw   $a0, 0($a1)
 	add  $sp, $sp, 4
-if27:
+if28:
 	sub  $sp, $sp, 4
 	lw   $a0, -8($fp)
 	sub  $sp, $sp, 4
@@ -334,7 +319,7 @@ fun_itoa:
 	add  $sp, $sp, 4
 	move $t1, $a0
 	slt  $a0, $t0, $t1
-	beqz $a0, if19
+	beqz $a0, if20
 	add  $a0, $fp, -12
 	sub  $sp, $sp, 4
 	sw   $a0, 0($sp)
@@ -348,8 +333,8 @@ fun_itoa:
 	add  $t0, $t0, 1
 	sw   $t0, 0($a0)
 	sub  $a0, $t0, 1
-	b    if20
-if19:
+	b    if21
+if20:
 	add  $a0, $fp, -12
 	sub  $sp, $sp, 4
 	sw   $a0, 0($sp)
@@ -357,7 +342,7 @@ if19:
 	lw   $a1, 0($sp)
 	sw   $a0, 0($a1)
 	add  $sp, $sp, 4
-if20:
+if21:
 	add  $a0, $fp, -12
 	sub  $sp, $sp, 4
 	sw   $a0, 0($sp)
@@ -372,8 +357,8 @@ if20:
 	lw   $a1, 0($sp)
 	sw   $a0, 0($a1)
 	add  $sp, $sp, 4
-	j    while22
-while21:
+	j    while23
+while22:
 	add  $a0, $fp, -16
 	lw   $t0, 0($a0)
 	add  $t0, $t0, 1
@@ -393,7 +378,7 @@ while21:
 	lw   $a1, 0($sp)
 	sw   $a0, 0($a1)
 	add  $sp, $sp, 4
-while22:
+while23:
 	lw   $a0, -12($fp)
 	sub  $sp, $sp, 4
 	sw   $a0, 0($sp)
@@ -402,7 +387,7 @@ while22:
 	add  $sp, $sp, 4
 	move $t1, $a0
 	sne  $a0, $t0, $t1
-	bnez $a0, while21
+	bnez $a0, while22
 	add  $a0, $fp, -8
 	sub  $sp, $sp, 4
 	sw   $a0, 0($sp)
@@ -447,7 +432,7 @@ while22:
 	add  $sp, $sp, 4
 	move $t1, $a0
 	slt  $a0, $t0, $t1
-	beqz $a0, if23
+	beqz $a0, if24
 	lw   $a0, -8($fp)
 	sub  $sp, $sp, 4
 	sw   $a0, 0($sp)
@@ -471,9 +456,9 @@ while22:
 	lw   $a1, 0($sp)
 	sw   $a0, 0($a1)
 	add  $sp, $sp, 4
-if23:
-	j    while25
-while24:
+if24:
+	j    while26
+while25:
 	lw   $a0, -8($fp)
 	sub  $sp, $sp, 4
 	sw   $a0, 0($sp)
@@ -521,7 +506,7 @@ while24:
 	lw   $a1, 0($sp)
 	sw   $a0, 0($a1)
 	add  $sp, $sp, 4
-while25:
+while26:
 	lw   $a0, 4($fp)
 	sub  $sp, $sp, 4
 	sw   $a0, 0($sp)
@@ -530,7 +515,7 @@ while25:
 	add  $sp, $sp, 4
 	move $t1, $a0
 	sgt  $a0, $t0, $t1
-	bnez $a0, while24
+	bnez $a0, while25
 	lw   $a0, -8($fp)
 	sub  $sp, $sp, 4
 	sw   $a0, 0($sp)
@@ -573,12 +558,12 @@ fun_print_string:
 	sub  $fp, $sp, 4
 	sw   $ra, -4($fp)
 	sub  $sp, $fp, 8
-	j    while18
-while17:
+	j    while19
+while18:
 	lw   $a0, -8($fp)
 	li   $v0, 11
 	syscall
-while18:
+while19:
 	add  $a0, $fp, -8
 	sub  $sp, $sp, 4
 	sw   $a0, 0($sp)
@@ -591,7 +576,7 @@ while18:
 	lw   $a1, 0($sp)
 	sb   $a0, 0($a1)
 	add  $sp, $sp, 4
-	bnez $a0, while17
+	bnez $a0, while18
 f_end_print_string:
 	add  $sp, $fp, 8
 	lw   $ra, -4($fp)
@@ -652,8 +637,8 @@ fun_append:
 	lw   $a1, 0($sp)
 	sw   $a0, 0($a1)
 	add  $sp, $sp, 4
-	j    while14
-while13:
+	j    while15
+while14:
 	lw   $a0, -16($fp)
 	sub  $sp, $sp, 4
 	sw   $a0, 0($sp)
@@ -673,7 +658,7 @@ while13:
 	lw   $a1, 0($sp)
 	sb   $a0, 0($a1)
 	add  $sp, $sp, 4
-while14:
+while15:
 	add  $a0, $fp, -8
 	sub  $sp, $sp, 4
 	sw   $a0, 0($sp)
@@ -686,9 +671,9 @@ while14:
 	lw   $a1, 0($sp)
 	sb   $a0, 0($a1)
 	add  $sp, $sp, 4
-	bnez $a0, while13
-	j    while16
-while15:
+	bnez $a0, while14
+	j    while17
+while16:
 	lw   $a0, -16($fp)
 	sub  $sp, $sp, 4
 	sw   $a0, 0($sp)
@@ -708,7 +693,7 @@ while15:
 	lw   $a1, 0($sp)
 	sb   $a0, 0($a1)
 	add  $sp, $sp, 4
-while16:
+while17:
 	add  $a0, $fp, -8
 	sub  $sp, $sp, 4
 	sw   $a0, 0($sp)
@@ -721,7 +706,7 @@ while16:
 	lw   $a1, 0($sp)
 	sb   $a0, 0($a1)
 	add  $sp, $sp, 4
-	bnez $a0, while15
+	bnez $a0, while16
 	lw   $a0, -16($fp)
 	sub  $sp, $sp, 4
 	sw   $a0, 0($sp)
@@ -757,21 +742,21 @@ fun_strlen:
 	lw   $a1, 0($sp)
 	sw   $a0, 0($a1)
 	add  $sp, $sp, 4
-	j    while12
-while11:
+	j    while13
+while12:
 	add  $a0, $fp, -8
 	lw   $t0, 0($a0)
 	add  $t0, $t0, 1
 	sw   $t0, 0($a0)
 	sub  $a0, $t0, 1
-while12:
+while13:
 	add  $a0, $fp, 4
 	lw   $t0, 0($a0)
 	add  $t0, $t0, 1
 	sw   $t0, 0($a0)
 	sub  $a0, $t0, 1
 	lb   $a0, 0($a0)
-	bnez $a0, while11
+	bnez $a0, while12
 	lw   $a0, -8($fp)
 	sw   $a0, 8($fp)
 	j    f_end_strlen
@@ -808,8 +793,7 @@ if8:
 	add  $sp, $sp, 4
 	move $t1, $a0
 	slt  $a0, $t0, $t1
-	sub  $sp, $sp, 4
-	sw   $a0, 0($sp)
+	beqz $a0, and9
 	lw   $a0, 8($fp)
 	lw   $a0, 4($a0)
 	sub  $sp, $sp, 4
@@ -819,40 +803,12 @@ if8:
 	add  $sp, $sp, 4
 	move $t1, $a0
 	sne  $a0, $t0, $t1
-	lw   $t0, 0($sp)
-	add  $sp, $sp, 4
-	move $t1, $a0
-	sne  $t0, $t0, 0
-	sne  $t1, $t1, 0
-	and  $a0, $t0, $t1
-	beqz $a0, if9
-	sub  $sp, $sp, 4
-	lw   $a0, 8($fp)
-	lw   $a0, 4($a0)
-	sub  $sp, $sp, 4
-	sw   $a0, 0($sp)
-	lw   $a0, 4($fp)
-	sub  $sp, $sp, 4
-	sw   $a0, 0($sp)
-	jal  fun_contient
-	sw   $a0, 0($sp)
-	add  $sp, $sp, 4
-	sw   $a0, 12($fp)
-	j    f_end_contient
-if9:
-	lw   $a0, 8($fp)
-	lw   $a0, 0($a0)
-	sub  $sp, $sp, 4
-	sw   $a0, 0($sp)
-	li   $a0, 0
-	lw   $t0, 0($sp)
-	add  $sp, $sp, 4
-	move $t1, $a0
-	sne  $a0, $t0, $t1
+and9:
+	sne  $a0, $a0, 0
 	beqz $a0, if10
 	sub  $sp, $sp, 4
 	lw   $a0, 8($fp)
-	lw   $a0, 0($a0)
+	lw   $a0, 4($a0)
 	sub  $sp, $sp, 4
 	sw   $a0, 0($sp)
 	lw   $a0, 4($fp)
@@ -864,6 +820,30 @@ if9:
 	sw   $a0, 12($fp)
 	j    f_end_contient
 if10:
+	lw   $a0, 8($fp)
+	lw   $a0, 0($a0)
+	sub  $sp, $sp, 4
+	sw   $a0, 0($sp)
+	li   $a0, 0
+	lw   $t0, 0($sp)
+	add  $sp, $sp, 4
+	move $t1, $a0
+	sne  $a0, $t0, $t1
+	beqz $a0, if11
+	sub  $sp, $sp, 4
+	lw   $a0, 8($fp)
+	lw   $a0, 0($a0)
+	sub  $sp, $sp, 4
+	sw   $a0, 0($sp)
+	lw   $a0, 4($fp)
+	sub  $sp, $sp, 4
+	sw   $a0, 0($sp)
+	jal  fun_contient
+	sw   $a0, 0($sp)
+	add  $sp, $sp, 4
+	sw   $a0, 12($fp)
+	j    f_end_contient
+if11:
 	li   $a0, 0
 	sw   $a0, 12($fp)
 	j    f_end_contient
@@ -1040,12 +1020,16 @@ f_end_make:
 	lw   $fp, 0($fp)
 	jr   $ra
 	.data
+	.align 2
 str_1:
 	.asciiz ")"
+	.align 2
 str_0:
 	.asciiz "("
+	.align 2
 str_2:
 	.asciiz "ok\n"
+	.align 2
 newline:
 	.asciiz "\n"
 

@@ -6,7 +6,8 @@ and lvar = {lv_name : ident ; mutable lv_loc : int ; lv_type : mtype}
 (*loc : localisation de la variable locale sur la pile, sera utilisé plus tard*)
 and var = TGvar of gvar | TLvar of lvar
 and func = {f_name : ident ; f_type : mtype ; f_arg : lvar list ;
-	mutable f_lvar_size : int (*taille du tableau d'activation*) ; mutable f_result_pos : int (*position du résultat*)}	
+	mutable f_lvar_size : int (*taille du tableau d'activation*) ;
+        mutable f_result_pos : int (*position du résultat*)}	
 and stru = {s_name : ident ; 
    mutable s_content : lvar list ;
    mutable s_size : int}

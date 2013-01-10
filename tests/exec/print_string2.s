@@ -1,7 +1,7 @@
 	.text
 main:
-	sub  $fp, $sp, 8
-	sub  $sp, $sp, 8
+	sub  $fp, $sp, 12
+	sub  $sp, $sp, 12
 	sw   $a0, 4($sp)
 	sw   $a1, 0($sp)
 	jal  fun_main
@@ -60,13 +60,6 @@ fun_print_string:
 	lw   $a1, 0($sp)
 	sw   $a0, 0($a1)
 	add  $sp, $sp, 4
-	add  $a0, $fp, -12
-	sub  $sp, $sp, 4
-	sw   $a0, 0($sp)
-	li   $a0, 0
-	lw   $a1, 0($sp)
-	sw   $a0, 0($a1)
-	add  $sp, $sp, 4
 	j    while2
 while1:
 	lw   $a0, -8($fp)
@@ -101,10 +94,13 @@ f_end_print_string:
 	lw   $fp, 0($fp)
 	jr   $ra
 	.data
+	.align 2
 str_1:
 	.asciiz "hello world\n"
+	.align 2
 str_0:
 	.asciiz "foo"
+	.align 2
 newline:
 	.asciiz "\n"
 

@@ -1,6 +1,7 @@
 
 type register =
-  | ZERO | A0 | A1 | A2 | A3 | V0 | V1 | T0 | T1 | T2 | T3 | T4 | S0 | S1 | S2 | S3 | S4 | RA | SP | FP 
+  | ZERO | A0 | A1 | A2 | A3 | V0 | V1 | T0 | T1 | T2 | T3 | T4 
+  | S0 | S1 | S2 | S3 | S4 | RA | SP | FP 
 
 type address =
   | Alab of int * string
@@ -136,9 +137,11 @@ let print_instruction fmt = function
       fprintf fmt "\t%a  %a, %a, %a\n"
 	print_arith a print_register dst print_register src print_operand op
   | And (dst, src, op) ->
-      fprintf fmt "\tand  %a, %a, %a\n" print_register dst print_register src print_operand op
+      fprintf fmt "\tand  %a, %a, %a\n" print_register dst 
+        print_register src print_operand op
   | Or (dst, src, op) ->
-      fprintf fmt "\tor  %a, %a, %a\n" print_register dst print_register src print_operand op
+      fprintf fmt "\tor  %a, %a, %a\n" print_register dst 
+        print_register src print_operand op
   | Neg (dst, src) ->
       fprintf fmt "\tneg  %a, %a\n" print_register dst print_register src
   | Not (dst, src) ->

@@ -1,7 +1,7 @@
 	.text
 main:
-	sub  $fp, $sp, 8
-	sub  $sp, $sp, 8
+	sub  $fp, $sp, 12
+	sub  $sp, $sp, 12
 	sw   $a0, 4($sp)
 	sw   $a1, 0($sp)
 	jal  fun_main
@@ -93,7 +93,6 @@ fun_fact_rec:
 	beqz $a0, if1
 	li   $a0, 1
 	sw   $a0, 8($fp)
-	sub  $sp, $sp, 4
 	j    f_end_fact_rec
 if1:
 	lw   $a0, 4($fp)
@@ -118,7 +117,6 @@ if1:
 	move $t1, $a0
 	mul  $a0, $t0, $t1
 	sw   $a0, 8($fp)
-	sub  $sp, $sp, 4
 	j    f_end_fact_rec
 f_end_fact_rec:
 	add  $sp, $fp, 8
@@ -126,6 +124,7 @@ f_end_fact_rec:
 	lw   $fp, 0($fp)
 	jr   $ra
 	.data
+	.align 2
 newline:
 	.asciiz "\n"
 

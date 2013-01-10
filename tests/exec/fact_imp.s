@@ -1,7 +1,7 @@
 	.text
 main:
-	sub  $fp, $sp, 8
-	sub  $sp, $sp, 8
+	sub  $fp, $sp, 12
+	sub  $sp, $sp, 12
 	sw   $a0, 4($sp)
 	sw   $a1, 0($sp)
 	jal  fun_main
@@ -121,7 +121,6 @@ while2:
 	bnez $a0, while1
 	lw   $a0, -8($fp)
 	sw   $a0, 8($fp)
-	sub  $sp, $sp, 4
 	j    f_end_fact_imp
 f_end_fact_imp:
 	add  $sp, $fp, 8
@@ -129,6 +128,7 @@ f_end_fact_imp:
 	lw   $fp, 0($fp)
 	jr   $ra
 	.data
+	.align 2
 newline:
 	.asciiz "\n"
 

@@ -1,7 +1,7 @@
 	.text
 main:
-	sub  $fp, $sp, 8
-	sub  $sp, $sp, 8
+	sub  $fp, $sp, 12
+	sub  $sp, $sp, 12
 	sw   $a0, 4($sp)
 	sw   $a1, 0($sp)
 	jal  fun_main
@@ -167,16 +167,22 @@ f_end_atoi:
 	lw   $fp, 0($fp)
 	jr   $ra
 	.data
+	.align 2
 str_1:
 	.asciiz "1"
+	.align 2
 str_0:
 	.asciiz "0"
+	.align 2
 str_4:
 	.asciiz "63"
+	.align 2
 str_3:
 	.asciiz "255"
+	.align 2
 str_2:
 	.asciiz "42"
+	.align 2
 newline:
 	.asciiz "\n"
 

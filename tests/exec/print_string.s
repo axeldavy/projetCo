@@ -1,7 +1,7 @@
 	.text
 main:
-	sub  $fp, $sp, 8
-	sub  $sp, $sp, 8
+	sub  $fp, $sp, 12
+	sub  $sp, $sp, 12
 	sw   $a0, 4($sp)
 	sw   $a1, 0($sp)
 	jal  fun_main
@@ -14,14 +14,14 @@ fun_main:
 	sub  $sp, $fp, 4
 	sub  $sp, $sp, 4
 	la   $a0, str_0
-	sw   $a0, -4($sp)
 	sub  $sp, $sp, 4
+	sw   $a0, 0($sp)
 	jal  fun_print_endline
 	add  $sp, $sp, 4
 	sub  $sp, $sp, 4
 	la   $a0, str_1
-	sw   $a0, -4($sp)
 	sub  $sp, $sp, 4
+	sw   $a0, 0($sp)
 	jal  fun_print_string
 	add  $sp, $sp, 4
 f_end_main:
@@ -36,8 +36,8 @@ fun_print_endline:
 	sub  $sp, $fp, 4
 	sub  $sp, $sp, 4
 	lw   $a0, 4($fp)
-	sw   $a0, -4($sp)
 	sub  $sp, $sp, 4
+	sw   $a0, 0($sp)
 	jal  fun_print_string
 	add  $sp, $sp, 4
 	li   $a0, 10
@@ -61,14 +61,14 @@ while1:
 while2:
 	add  $a0, $fp, -8
 	sub  $sp, $sp, 4
-	sw   $a0, 4($sp)
+	sw   $a0, 0($sp)
 	add  $a0, $fp, 4
 	lw   $t0, 0($a0)
 	add  $t0, $t0, 1
 	sw   $t0, 0($a0)
 	sub  $a0, $t0, 1
 	lb   $a0, 0($a0)
-	lw   $a1, 4($sp)
+	lw   $a1, 0($sp)
 	sb   $a0, 0($a1)
 	add  $sp, $sp, 4
 	bnez $a0, while1
@@ -78,10 +78,13 @@ f_end_print_string:
 	lw   $fp, 0($fp)
 	jr   $ra
 	.data
+	.align 2
 str_1:
 	.asciiz "hello world\n"
+	.align 2
 str_0:
 	.asciiz "foo"
+	.align 2
 newline:
 	.asciiz "\n"
 

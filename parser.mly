@@ -75,7 +75,7 @@ expr:
   | id = NAME {Variable id}
   | STAR e = expression  %prec get_pointer {Pointer_access e}  
   | e1 = expression INDEX_OPEN e2 = expression INDEX_CLOSE
-      {Pointer_access({exp= Binop(BPlus, e1, e2); exp_pos= ($startpos,$endpos)})}
+     {Pointer_access({exp= Binop(BPlus, e1, e2); exp_pos= ($startpos,$endpos)})}
   | e = expression DOT id = ident {Access_field(e,id) }
   | e = expression ARROW id = ident 
       { Access_field({exp=Pointer_access(e);exp_pos = ($startpos,$endpos)},id) }
@@ -156,10 +156,10 @@ CLOSE_BLOCK
   { bloc = (lvar,linstr) ; bloc_pos = ($startpos,$endpos) }  }
 
 decl_typ:
-  |STRUCT id = ident OPEN_BLOCK lvar =list(decl_var) CLOSE_BLOCK SEMICOLON (* à tester *)
+  |STRUCT id = ident OPEN_BLOCK lvar =list(decl_var) CLOSE_BLOCK SEMICOLON
              {let lvar = List.flatten lvar in
 	      {dectype =Dstruct(id,lvar); dectype_pos = ($startpos,$endpos)} } 
-  |UNION id = ident OPEN_BLOCK lvar =list(decl_var) CLOSE_BLOCK SEMICOLON (* à tester *)
+  |UNION id = ident OPEN_BLOCK lvar =list(decl_var) CLOSE_BLOCK SEMICOLON 
              {let lvar = List.flatten lvar in 
 	     {dectype = Dunion(id,lvar); dectype_pos = ($startpos,$endpos)} } 
 

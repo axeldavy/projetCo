@@ -6,13 +6,17 @@ type ident = string
 type ttype = Void | Int | Char | Struct of ident 
 	     | Union of ident | Pointer of ttype | Typenull
 type unop = PPleft | PPright | MMleft | MMright | Adr_get | Not 
-	    | UMinus | UPlus | PointerPPleft | PointerPPright | PointerMMleft | PointerMMright
+	    | UMinus | UPlus | PointerPPleft | PointerPPright 
+            | PointerMMleft | PointerMMright
 
 type  bop = Eq | Neq | Lt | Leq | Gt | Geq | BPlus | BMinus 
-	    | Mul | Div | Mod | And | Or | PointerBPlus | PointerIntBMinus | PointerPointerBMinus
-		(*les deux derniers sont pour la soustraction entre 2 pointeurs, et entre un pointeur et un entier*)
-		(*Dans le cas de PointerBPlus et de PointerIntBMinus, les expressions qui correspondent au type pointeur 
-		sont le premier élément du coupe (effectué par le typeur)*)
+	    | Mul | Div | Mod | And | Or | PointerBPlus 
+            | PointerIntBMinus | PointerPointerBMinus
+(*les deux derniers sont pour la soustraction entre 2 pointeurs, 
+et entre un pointeur et un entier*)
+(*Dans le cas de PointerBPlus et de PointerIntBMinus, 
+les expressions qui correspondent au type pointeur 
+sont le premier élément du coupe (effectué par le typeur)*)
 
 
 let rec string_of_type = function 

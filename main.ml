@@ -55,12 +55,13 @@ let () =
     if !parse_only then (printf "Parsing de %s terminee@." !ifile; exit 0);
     let p2 = Typeur.typage p in
     if !type_only then ( printf "Typage de %s terminee@." !ifile; exit 0);
-	
-	let file = open_out !ofile in 
-	let code = Prod_code.code_prog p2 in 
-	Mips.print_program (Format.formatter_of_out_channel file) code ;
-	close_out file ;
-	exit 0 
+    
+    let file = open_out !ofile in 
+    let code = Prod_code.code_prog p2 in 
+    Mips.print_program (Format.formatter_of_out_channel file) code ;
+    close_out file ;
+    printf "Compilation de %s terminee@." !ifile;
+    exit 0 
   with
     | Lexer.Lexing_error c -> 
 	(* Erreur lexicale. On récupère sa position absolue et 

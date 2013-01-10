@@ -6,12 +6,12 @@ open Definition
 
 exception Type_error of position * string
 exception Argtype_error of position * string * (mtype list)
-(*== erreur à la position pos, la fonction (l'opérateur) string a eu les 
+(*== erreur a la position pos, la fonction (l'opérateur) string a eu les 
 types de la liste en argument *)
 
 (* on conserve dans l'environnement le type de toutes les variables et 
 les fonctions, ainsi que les structures et unions
-Le champ arg permet de savoir si l'indent donné correspond à une variable, 
+Le champ arg permet de savoir si l'indent donné correspond a une variable, 
 ou une fonction et donne les types des arguments de la fonction*)
 module SMap = Map.Make(String) 
 
@@ -72,7 +72,7 @@ let rec ttype_of_mtype = function
 let string_of_mtype t= string_of_type (ttype_of_mtype t)
   
   
-(*dit si un opérateur binaire est un opérateur de comparaison ou non*)
+(*dit si un operateur binaire est un operateur de comparaison ou non*)
 let compop = function 
   | Eq | Neq | Lt | Gt | Leq | Geq -> true
   | BPlus | BMinus | Mul | Div | Mod | Or | And -> false
@@ -84,11 +84,11 @@ let ispointer = function
       
 
 (*pour ne pas avoir de conflit entre une variable et une structure qui 
-auraient le même nom, dans la map de l'environnement, on rajoute les préfixes 
+auraient le même nom, dans la map de l'environnement, on rajoute les prefixes 
 "var_" "str_" "uni_" "fun_" devant le nom de l'identificateur 
 (on ne peut pas lier plusieurs fois un id dans une map)*)
 
-(*on suppose que les types dans l'environnement sont bien formés*)
+(*on suppose que les types dans l'environnement sont bien formes*)
 let rec bien_forme env t = try match t with
   | TVoid | TInt | TChar | TTypenull -> true
   | TPointer t -> bien_forme env t      
@@ -98,14 +98,14 @@ with Not_found -> false
   
   
 let var_decType local env dv =
-  (*local est un booléen qui détermine si les variables que l'on déclares sont 
+  (*local est un booleen qui determine si les variables que l'on declares sont 
 globales ou locales*) 
   let t,id = dv.decvar in 
 	let t' = mtype_of_ttype env dv.decvar_pos t in 
 	let v = if local then TLvar {lv_name = id ; lv_loc = 0 ; lv_type = t'} 
 	else TGvar {gv_name = id ; gv_type = t'} 
 	in 
-        (*vérification de non redéclaration*)
+        (*verification de non redeclaration*)
 	begin try match SMap.find ("var_"^id) env with 
 	  | MVar (TGvar _) when local -> ()
 	  | MVar (TGvar _) -> raise (Type_error 
@@ -136,8 +136,8 @@ let rec exprType env n =  match n.exp with
       
   | Chaine s -> Hashtbl.replace echaine s ("str_"^(string_of_int !num_chaine)); 
 		num_chaine := !num_chaine +1; 
-(* rq: si une chaine est utilisée plusieurs fois, il y aura des trous dans le compte les str_i,
-mais la chaine ne sera bien déclarée qu'une seule fois *) 
+(* numero pas tres important pour la suite *) 
+(* rq: Pas de soucis si une chaine est utilisee plusieurs fois *) 
       {texp = TChaine s; texp_pos = n.exp_pos ; texp_type = TPointer(TChar)}
       
   | Character c -> 
@@ -162,7 +162,7 @@ mais la chaine ne sera bien déclarée qu'une seule fois *)
       if not (equiv t TVoid) 
       then {texp = TSizeof t ; texp_pos = n.exp_pos ; texp_type = TInt}
       else raise (Type_error (n.exp_pos,("trying to get sizeof void")))  
-      else raise (Type_error (n.exp_pos,(string_of_mtype t) ^" est mal formé"))
+      else raise (Type_error (n.exp_pos,(string_of_mtype t) ^" est mal forme"))
 	
   | Unop (Adr_get, e) -> 
       let e' = exprType env e in 
@@ -190,7 +190,9 @@ mais la chaine ne sera bien déclarée qu'une seule fois *)
 		try
 	          { texp = TAccess_field(e',x); 
                   texp_pos = n.exp_pos ; 
-                  texp_type = (List.find (fun var -> var.lv_name = x) u.u_content).lv_type};
+                  texp_type = 
+                      (List.find 
+                        (fun var -> var.lv_name = x) u.u_content).lv_type};
 		with Not_found -> raise (Type_error 
                   (n.exp_pos,"l'identificateur " ^x^ "n'apparait pas dans " ^ 
                     "uni " ^ u.u_name ))
@@ -202,7 +204,8 @@ mais la chaine ne sera bien déclarée qu'une seule fois *)
 		try
 		  { texp = TAccess_field(e',x); 
                   texp_pos = n.exp_pos ; 
-                  texp_type = (List.find (fun var -> var.lv_name = x) s.s_content).lv_type};
+                  texp_type = (List.find 
+                    (fun var -> var.lv_name = x) s.s_content).lv_type};
 		with Not_found -> raise (Type_error 
                   (n.exp_pos,"l'identificateur " ^x^ "n'apparait pas dans " ^ 
                     "str " ^ s.s_name ))
@@ -229,8 +232,8 @@ mais la chaine ne sera bien déclarée qu'une seule fois *)
         (n.exp_pos,"lvalue required as left operand of assignment" ))
         
   | Unop(op,e) when (op=PPleft)||(op=PPright)||(op=MMleft)||(op = MMright) ->
-  (*onfait appel à cette fonction suivant que l'expression sur laquelle on 
-  appelle ces opérateurs est un pointeur ou non*)
+  (*on fait appel a cette fonction suivant que l'expression sur laquelle on 
+  appelle ces operateurs est un pointeur ou non*)
 	  let aux = function 
 		| PPleft -> PointerPPleft
 		| PPright -> PointerPPright 
@@ -264,8 +267,8 @@ mais la chaine ne sera bien déclarée qu'une seule fois *)
     else raise (Argtype_error (n.exp_pos,(string_of_unop Not),[t]))
       
   | Unop (_,_) -> assert false 
-      (*tous les autres cas ont été traités avant, 
-        c'est pour éviter un warning*)
+      (*tous les autres cas ont ete traites avant, 
+        c'est pour eviter un warning*)
       
   | Binop(op,e1,e2) when compop op -> 
       let e1' = exprType env e1 and e2'= exprType env e2 in 
@@ -277,21 +280,25 @@ mais la chaine ne sera bien déclarée qu'une seule fois *)
         raise (Argtype_error (n.exp_pos,(string_of_binop op),[t1;t2]))
         
   | Binop(op,e1,e2) -> let e1' = exprType env e1 and e2' = exprType env e2 in
-  (*adapté pour renvoyer un opérateur différent suivant que les expressions sont des pointeurs ou non*)
+  (*adapte pour renvoyer un operateur different 
+    suivant que les expressions sont des pointeurs ou non*)
     let t1 = e1'.texp_type and t2 = e2'.texp_type in
     if (ispointer t1)&&(equiv t2 TInt)&&((op = BPlus)||(op = BMinus))
     then let new_op = if op = BPlus then PointerBPlus else PointerIntBMinus in
-		{texp = TBinop(new_op,e1',e2') ; texp_pos = n.exp_pos; texp_type = t1}
+      {texp = TBinop(new_op,e1',e2') ; texp_pos = n.exp_pos; texp_type = t1}
     else
-	  if (ispointer t2)&&(equiv t1 TInt)&&(op = BPlus)
-	  then {texp = TBinop(PointerIntBMinus,e1',e2') ; texp_pos = n.exp_pos; texp_type = t2}
-	  else
-	    if (ispointer t1)&&(equiv t1 t2)&&(op = BMinus)
-	    then {texp = TBinop(PointerPointerBMinus,e1',e2') ; texp_pos = n.exp_pos; texp_type = TInt}
+      if (ispointer t2)&&(equiv t1 TInt)&&(op = BPlus)
+      then {texp = TBinop(PointerIntBMinus,e1',e2') ; 
+            texp_pos = n.exp_pos; texp_type = t2}
+      else
+	if (ispointer t1)&&(equiv t1 t2)&&(op = BMinus)
+	then {texp = TBinop(PointerPointerBMinus,e1',e2') ;
+              texp_pos = n.exp_pos; texp_type = TInt}
         else
           if (equiv t1 t2)&&(equiv t1 TInt) 
-          then {texp = TBinop(op,e1',e2') ; texp_pos = n.exp_pos; texp_type = TInt}
-	      else raise (Argtype_error (n.exp_pos,(string_of_binop op),[t1;t2]))
+          then {texp = TBinop(op,e1',e2') ; 
+                texp_pos = n.exp_pos; texp_type = TInt}
+	  else raise (Argtype_error (n.exp_pos,(string_of_binop op),[t1;t2]))
 	
   | Call(id,l) -> begin try
       match SMap.find ("fun_"^id) env with
@@ -374,7 +381,7 @@ let rec instrType env t0 i = match i.instr with
         tbloc_pos = i.instr_pos} ; tinstr_pos = i.instr_pos} 
         in
 	ti
-	  (*on remplace l'instruction for, par une autre équivalente avec 
+	  (*on remplace l'instruction for, par une autre equivalente avec 
             while*)
       else raise (Type_error 
         (i.instr_pos, "used type " ^(string_of_mtype e'.texp_type)^
@@ -480,14 +487,16 @@ let rec fileType env l =
 		List.iter (fun var -> if (not (bien_forme env' var.lv_type)) || 
                   (equiv var.lv_type (TUnion new_uni)) then
 		  raise (Type_error 
-                    (dt.dectype_pos,"storage size of '"^var.lv_name^"' is unknown")) )
+                    (dt.dectype_pos,
+                     "storage size of '"^var.lv_name^"' is unknown")) )
 		  new_uni.u_content ;
 		let env2,l2 = fileType env' (List.tl l) in 
 		env2,(dv'::l2)
 	end 
 
       | Df df -> let t,id,lvar,b = df.decfun in 
-	let _ = List.iter (fun (t,x) -> if t = Void then raise (Type_error (df.decfun_pos,"argument "^x^ " is void"))) lvar
+	let _ = List.iter (fun (t,x) -> if t = Void then 
+          raise (Type_error (df.decfun_pos,"argument "^x^ " is void"))) lvar
 	in 
 	let t' = mtype_of_ttype env df.decfun_pos t in 
 	if (SMap.mem ("fun_"^id) env) || (SMap.mem ("var_"^id) env) 
@@ -509,7 +518,7 @@ let rec fileType env l =
 	  f_type = t' ; 
 	  f_arg = List.map 
               (fun (t,x) -> {lv_name = x ; lv_loc = 0 ;
-				lv_type = mtype_of_ttype env df.decfun_pos t}) lvar ;
+	      lv_type = mtype_of_ttype env df.decfun_pos t}) lvar ;
 	  f_lvar_size = 0 ;
 	  f_result_pos = 0 
           }
@@ -544,7 +553,7 @@ let typage p =
   let env0 = SMap.add "fun_sbrk" sbrk (SMap.singleton "fun_putchar" putchar) in
   let env,l = (fileType env0 p.decl) in 
   let pos = (Lexing.dummy_pos,Lexing.dummy_pos) in 
-  (*la position renvoyée des erreur ne correspond ici à rien*)
+  (*la position renvoyee des erreur ne correspond ici a rien*)
   try begin 
     let f' = SMap.find "fun_main" env in 
     match f' with 
@@ -553,7 +562,8 @@ let typage p =
 	  begin 
 	    match f.f_arg with 
 	      | [] -> ()
-	      | [arg1;arg2] when (arg1.lv_type = TInt) && (arg2.lv_type = TPointer(TPointer(TChar))) -> () ;
+	      | [arg1;arg2] when (arg1.lv_type = TInt) 
+                  && (arg2.lv_type = TPointer(TPointer(TChar))) -> () ;
 	      | _ -> 
 		  let lt = List.map (fun arg -> arg.lv_type) f.f_arg in 
 		  raise (Argtype_error (pos,"main",lt))

@@ -1,7 +1,7 @@
 	.text
 main:
-	sub  $fp, $sp, 8
-	sub  $sp, $sp, 8
+	sub  $fp, $sp, 12
+	sub  $sp, $sp, 12
 	sw   $a0, 4($sp)
 	sw   $a1, 0($sp)
 	jal  fun_main
@@ -16,15 +16,10 @@ fun_main:
 	sub  $sp, $sp, 4
 	sw   $a0, 0($sp)
 	li   $a0, 1
-	sub  $sp, $sp, 4
-	sw   $a0, 0($sp)
+	beqz $a0, and1
 	li   $a0, 1
-	lw   $t0, 0($sp)
-	add  $sp, $sp, 4
-	move $t1, $a0
-	sne  $t0, $t0, 0
-	sne  $t1, $t1, 0
-	and  $a0, $t0, $t1
+and1:
+	sne  $a0, $a0, 0
 	lw   $t0, 0($sp)
 	add  $sp, $sp, 4
 	move $t1, $a0
@@ -35,15 +30,10 @@ fun_main:
 	sub  $sp, $sp, 4
 	sw   $a0, 0($sp)
 	li   $a0, 1
-	sub  $sp, $sp, 4
-	sw   $a0, 0($sp)
+	beqz $a0, and2
 	li   $a0, 2
-	lw   $t0, 0($sp)
-	add  $sp, $sp, 4
-	move $t1, $a0
-	sne  $t0, $t0, 0
-	sne  $t1, $t1, 0
-	and  $a0, $t0, $t1
+and2:
+	sne  $a0, $a0, 0
 	lw   $t0, 0($sp)
 	add  $sp, $sp, 4
 	move $t1, $a0
@@ -54,15 +44,10 @@ fun_main:
 	sub  $sp, $sp, 4
 	sw   $a0, 0($sp)
 	li   $a0, 1
-	sub  $sp, $sp, 4
-	sw   $a0, 0($sp)
+	beqz $a0, and3
 	li   $a0, 0
-	lw   $t0, 0($sp)
-	add  $sp, $sp, 4
-	move $t1, $a0
-	sne  $t0, $t0, 0
-	sne  $t1, $t1, 0
-	and  $a0, $t0, $t1
+and3:
+	sne  $a0, $a0, 0
 	lw   $t0, 0($sp)
 	add  $sp, $sp, 4
 	move $t1, $a0
@@ -78,6 +63,7 @@ f_end_main:
 	lw   $fp, 0($fp)
 	jr   $ra
 	.data
+	.align 2
 newline:
 	.asciiz "\n"
 

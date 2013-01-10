@@ -1,7 +1,7 @@
 	.text
 main:
-	sub  $fp, $sp, 8
-	sub  $sp, $sp, 8
+	sub  $fp, $sp, 12
+	sub  $sp, $sp, 12
 	sw   $a0, 4($sp)
 	sw   $a1, 0($sp)
 	jal  fun_main
@@ -63,7 +63,6 @@ fun_main:
 	add  $sp, $sp, 4
 	li   $a0, 0
 	sw   $a0, 4($fp)
-	sub  $sp, $sp, 4
 	j    f_end_main
 f_end_main:
 	add  $sp, $fp, 4
@@ -366,7 +365,6 @@ while7:
 	add  $sp, $sp, 4
 	lw   $a0, -8($fp)
 	sw   $a0, 8($fp)
-	sub  $sp, $sp, 4
 	j    f_end_itoa
 f_end_itoa:
 	add  $sp, $fp, 8
@@ -374,6 +372,7 @@ f_end_itoa:
 	lw   $fp, 0($fp)
 	jr   $ra
 	.data
+	.align 2
 newline:
 	.asciiz "\n"
 

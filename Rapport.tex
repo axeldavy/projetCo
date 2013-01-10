@@ -20,31 +20,31 @@ syntaxe : minic (options) filename
 \end{itemize}
 \section{Difficultés rencontrées}
 Outre les erreurs corrigées à la compilation et les erreurs corrigées
-automatiquement, on a corrigé pas mal d'oublis lors des tests sur les
+automatiquement, nous avons corrigé pas mal d'oublis lors des tests sur les
 fichiers de test.
 
-On a changé légèrement l'arbre de syntaxe abstraite à plusieurs reprises
+Nous avons du changer légèrement l'arbre de syntaxe abstraite à plusieurs reprises
 pour s'adapter à nos besoins.
 
-On a choisi de faire deux arbres différents: un arbre de syntaxe abstraite
+Nous avons choisi de faire deux arbres différents: un arbre de syntaxe abstraite
 pour le parseur (avec un type 'ttype' pour les variables adapté) et un arbre typé avec des
 étiquettes supplémentaires pour le typeur (avec un type 'mtype' adapté).
 
 \subsection{Lexeur}
-Ici on a eu surtout des erreurs dans le parseur causées par des oublis dans
+Ici nous avons surtout eu des erreurs dans le parseur causées par des oublis dans
 le lexeur.
 
-On a eu aussi une légère difficulté pour gérer les caractères spéciaux dans
+Nous avons eu aussi une légère difficulté pour gérer les caractères spéciaux dans
 les chaînes de caractères.
 
 \subsection{Parseur}
 
-On a pris quelques libertés par rapport aux règles proposées dans le
+Nous avons pris quelques libertés par rapport aux règles proposées dans le
 dossier au niveau de la représentation des variables et leur
 déclarations. En effet nous avons trouvé que la règle <var> n'était pas très pratique pour gérer
 les déclarations de variables.
 
-Bien sûr nous avons eu quelques soucis pour régler certains problèmes. On a
+Bien sûr nous avons eu quelques soucis pour régler certains problèmes. Nous avons
 eu un peu de mal à gérer les opérateurs unaires, et le
 problème du dandling else a été résolu assez tard en donnant une priorité
 plus élévée à else. 
@@ -52,15 +52,15 @@ plus élévée à else.
 
 \subsection{Typeur}
 
-Pour le typeur, on fait certains choix, comme de rajouter outre les champs
+Pour le typeur, nous avons fait certains choix, comme de rajouter outre les champs
 pour le type des expressions, des champs qui pourront être utilisés lors de
 la phase de production de code (un champs de localisation pour les
 variables locales donnant leur position sur la pile, ou un champ pour
-enregistrer la taille des différentes unions et structures déclarées). On a
+enregistrer la taille des différentes unions et structures déclarées). Nous avons
 eu quelques problème avec les structures récursives, qui ne fonctionnaient
 pas, ou qui provoquaient une boucle infinie quand on essayait de les comparer avec '='. 
 
-On a eu du mal aussi à gérer les problèmes de visibilité des variables
+Nous avons eu du mal aussi à gérer les problèmes de visibilité des variables
 locales, et leur éventuelle redéfinition dans des blocs.
 
 
@@ -72,11 +72,20 @@ main, nous obligeons qu'il y ait soit aucun argument, soit deux arguments
 bien typés.
 
 \subsection{Production de code}
-(*TODO*)
+La production de code n'est pas extrèmement optimisée, la seule optimisation étant de stocker dans des registres
+les résultats des expressions numériques. Les structures sont stockées sur la pile, avec la particularité (ou plutôt le choix) que les variables sont stockés dans un sens pas forcément identique à celui des déclarations. Les champs non alignés des structures sont mis à la fin de la structure, pour éviter de perdre de la place.
+Nous avons eu quelques difficultés avec l'alignement des variables. Mais nous avons réussi à les résoudre.
+Grâce aux champs supplémentaires que l'on avait rajoutés lors du typage, il a été plus simple de déterminer la position des variables locales, et des arguments des fonctions.
+Nous avons eu moins de difficultés que pour le typage, notamment, il y a eu beaucoup moins de débuggage à effectuer.
+Nous avons failli nous tromper dans l'évaluation des && et ||: 'et' et 'ou' logiques et non bit à bit. Et nous avons rendu leur évaluation paresseuse.
+
+ 
 
 \section{Remarques}
 Nous avons pu réaliser que la programmation d'un compilateur est très
 fastidieuse. 
+
+Nous aurions souhaité avoir une production de code plus optimisée: utilisation de tout les registres par exemple. Mais cela aurait requis trop de temps à programmer.
 
 
 Vous pouvez voir notre avancement durant l'année en regardant notre serveur
