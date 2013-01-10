@@ -160,7 +160,7 @@ and code_expr e =
   
   |TCall (f,[e]) when f.f_name = "sbrk"-> let c = code_expr e in c ++ (mips [Li (V0, 9); Syscall; Move(A0,V0)]) 
   
-  |TCall (f,l) -> (* on suppose sortier dans A0. A completer et corriger*)
+  |TCall (f,l) ->
     let put_arg e =
 	if num e.texp_type then    
     	  (code_expr e) ++ (mips [Arith(Sub,SP,SP,Oimm(4))]) ++ store_reg A0 (Areg(0,SP)) TInt
@@ -193,7 +193,7 @@ and code_expr e =
     | MMright -> let code_adr = lvalue_code e in
 		 code_adr ++ load_reg T0 (Areg(0,A0)) type1 ++ mips[Arith(Sub,T0,T0,Oimm(1)) ] ++ store_reg T0 (Areg(0,A0)) type1 ++ mips[ Arith(Add,A0,T0,Oimm(1))] 
     | Adr_get -> lvalue_code e 
-    | Definition.Not -> (code_expr e) ++ (mips[Mips.Not(A0,A0)])
+    | Definition.Not -> (code_expr e) ++ (mips[Mips.Set(Mips.Eq,A0,A0,Oimm(0))])
     | UMinus -> let code_e = code_expr e in 
 		code_e ++ (mips[Neg(A0,A0)])
     | UPlus  -> code_expr e
@@ -291,18 +291,20 @@ let code_data2 = function
   | TDt _ | TDf _ -> []
   | TDvar {tdecvar = TGvar v; tdecvar_pos = _} -> (match v.gv_type with
     | TInt | TChar | TPointer _ -> [Word("var_"^v.gv_name, [Wint 0])]
-    | TStruct stru -> [Space("var_"^v.gv_name,get_size(v.gv_type))] (* à tester *)
-    | TUnion uni -> [Space("var_"^v.gv_name,get_size(v.gv_type))]				  
+    | TStruct stru -> [Align 2 ; Space("var_"^v.gv_name,get_size(v.gv_type))] (* à tester *)
+    | TUnion uni -> [Align 2 ; Space("var_"^v.gv_name,get_size(v.gv_type))]				  
     | TVoid | TTypenull -> assert false			
       
   )
   | _ -> assert false
     
 let code_data () =  
-  Hashtbl.fold (fun x y l -> Asciiz (y, x) :: l) Typeur.echaine [Asciiz ("newline", "\n")]
+  Hashtbl.fold (fun x y l -> (Align 2)::Asciiz (y, x) :: l) Typeur.echaine [Align 2 ; Asciiz ("newline", "\n")]
     
     
-let code_main = mips[Label "main";Arith(Sub, FP,SP,Oimm(8));Arith(Sub, SP,SP,Oimm(8));Sw(A0,Areg(4,SP));Sw(A1,Areg(0,SP));Jal "fun_main";Li(V0,10);Syscall]
+(*il faut aussi laisser la place pour le résultat du main *)
+let code_main = 
+		mips[Label "main";Arith(Sub, FP,SP,Oimm(12));Arith(Sub, SP,SP,Oimm(12));Sw(A0,Areg(4,SP));Sw(A1,Areg(0,SP));Jal "fun_main";Li(V0,10);Syscall]
 (* SP dernière case occupée *)
   
 
